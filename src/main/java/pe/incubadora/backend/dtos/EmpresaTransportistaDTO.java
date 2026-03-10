@@ -3,7 +3,6 @@ package pe.incubadora.backend.dtos;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
-import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -14,6 +13,7 @@ import lombok.NoArgsConstructor;
 public class EmpresaTransportistaDTO {
 
     @NotBlank(message = "El ruc es obligatorio")
+    @Pattern(regexp = "\\d{11}$", message = "El RUC debe tener 11 dígitos numéricos")
     private String ruc;
 
     @NotBlank(message = "La razón social es obligatoria")
@@ -27,6 +27,6 @@ public class EmpresaTransportistaDTO {
     private String email;
 
     @NotBlank(message = "El telefono de contacto es obligatorio")
-    @Pattern(regexp = "\\d{9}$")
+    @Pattern(regexp = "\\d{9}$", message = "El número de teléfono debe tener 9 dígitos numéricos")
     private String contactoTelefono;
 }

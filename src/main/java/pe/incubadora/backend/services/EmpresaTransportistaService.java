@@ -13,7 +13,11 @@ public class EmpresaTransportistaService {
     private EmpresaTransportistaRepository empresaTransportistaRepository;
 
     @Transactional
-    public void crearEmpresa(EmpresaTransportistaDTO empresa){
+    public boolean crearEmpresa(EmpresaTransportistaDTO empresa){
+        if (empresa.getRuc().trim().length() != 11){
+            return false;
+        }
+
         EmpresaTransportistaEntity empresaTransportistaEntity = new EmpresaTransportistaEntity();
         empresaTransportistaEntity.setActivo(true);
         empresaTransportistaEntity.setRuc(empresa.getRuc());
@@ -22,5 +26,6 @@ public class EmpresaTransportistaService {
         empresaTransportistaEntity.setContactoTelefono(empresa.getContactoTelefono());
         empresaTransportistaEntity.setRazonSocial(empresa.getRazonSocial());
         empresaTransportistaRepository.save(empresaTransportistaEntity);
+        return true;
     }
 }
