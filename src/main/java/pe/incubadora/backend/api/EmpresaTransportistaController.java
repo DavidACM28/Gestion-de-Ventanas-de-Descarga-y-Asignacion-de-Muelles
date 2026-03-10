@@ -2,15 +2,14 @@ package pe.incubadora.backend.api;
 
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import pe.incubadora.backend.dtos.EmpresaTransportistaDTO;
 import pe.incubadora.backend.dtos.ErrorResponseDTO;
+import pe.incubadora.backend.entities.EmpresaTransportistaEntity;
 import pe.incubadora.backend.services.EmpresaTransportistaService;
 
 import java.util.HashMap;
@@ -43,6 +42,22 @@ public class EmpresaTransportistaController {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(
                 new ErrorResponseDTO("VALIDATION_ERROR", "Ya existe una empresa con este RUC"));
         }
+    }
+
+    @GetMapping("/empresas")
+    private ResponseEntity<Object> getEmpresas(@RequestParam int page) {
+        Pageable pageable = Pageable.ofSize(10).withPage(page);
+        return ResponseEntity.ok().body(empresaTransportistaService.getEmpresas(pageable));
+    }
+
+    @GetMapping("/empresas/{id}")
+    private ResponseEntity<Object> getEmpresasById(@PathVariable Long id) {
+        EmpresaTransportistaEntity empresa = empresaTransportistaService.getEmpresa(id);
+        if (empresa == null){
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+                new ErrorResponseDTO("EMPRESA_NOT_FOUND", "Empresa no encontrada"));
+        }
+        return  ResponseEntity.status(HttpStatus.OK).body(empresa);
     }
 
 }
