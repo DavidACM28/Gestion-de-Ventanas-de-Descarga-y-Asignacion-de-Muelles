@@ -17,6 +17,7 @@ public class EmpresaTransportistaEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(unique = true)
     private String ruc;
     private String razonSocial;
     private String contactoNombre;

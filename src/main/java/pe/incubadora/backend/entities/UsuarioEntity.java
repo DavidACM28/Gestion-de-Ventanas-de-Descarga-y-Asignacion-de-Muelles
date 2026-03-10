@@ -27,7 +27,7 @@ public class UsuarioEntity {
     private EmpresaTransportistaEntity empresa;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "camion_id")
+    @JoinColumn(name = "camion_id", unique = true)
     private CamionEntity camion;
 
     @Column(name = "username", unique = true)

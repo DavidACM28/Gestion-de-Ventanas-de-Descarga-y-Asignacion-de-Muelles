@@ -1,5 +1,6 @@
 package pe.incubadora.backend.services;
 
+import org.hibernate.validator.internal.constraintvalidators.bv.EmailValidator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -9,6 +10,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import pe.incubadora.backend.dtos.EmpresaTransportistaDTO;
 import pe.incubadora.backend.entities.EmpresaTransportistaEntity;
 import pe.incubadora.backend.repositories.EmpresaTransportistaRepository;
+import pe.incubadora.backend.utils.UpdateEmpresaResult;
 
 @Service
 public class EmpresaTransportistaService {
@@ -30,6 +32,47 @@ public class EmpresaTransportistaService {
         empresaTransportistaEntity.setRazonSocial(empresa.getRazonSocial());
         empresaTransportistaRepository.save(empresaTransportistaEntity);
         return true;
+    }
+
+    @Transactional
+    public UpdateEmpresaResult updateEmpresa(EmpresaTransportistaDTO empresa, Long id) {
+        EmpresaTransportistaEntity empresaTransportistaEntity = empresaTransportistaRepository.findById(id).orElse(null);
+        if (empresaTransportistaEntity == null) {
+            return UpdateEmpresaResult.EMPRESA_NOT_FOUND;
+        }
+        if (empresa.getRuc() != null && !empresa.getRuc().equals(empresaTransportistaEntity.getRuc())) {
+            if (!empresa.getRuc().matches("\\d+") || empresa.getRuc().trim().length() != 11) {
+                return UpdateEmpresaResult.RUC_INVALIDO;
+            }
+            empresaTransportistaEntity.setRuc(empresa.getRuc());
+        }
+        if (empresa.getRazonSocial() != null){
+            if (empresa.getRazonSocial().trim().length() < 3){
+                return UpdateEmpresaResult.RAZON_SOCIAL_INVALIDA;
+            }
+            empresaTransportistaEntity.setRazonSocial(empresa.getRazonSocial());
+        }
+        if (empresa.getContactoNombre() != null){
+            if (empresa.getContactoNombre().trim().isEmpty()){
+                return  UpdateEmpresaResult.NOMBRE_CONTACTO_INVALIDO;
+            }
+            empresaTransportistaEntity.setContactoNombre(empresa.getContactoNombre());
+        }
+        if (empresa.getContactoTelefono() != null){
+            if (!empresa.getContactoTelefono().matches("\\d+") || empresa.getContactoTelefono().trim().length() != 9) {
+                return UpdateEmpresaResult.TELEFONO_CONTACTO_INVALIDO;
+            }
+            empresaTransportistaEntity.setContactoTelefono(empresa.getContactoTelefono());
+        }
+        if (empresa.getEmail() != null){
+            EmailValidator emailValidator = new EmailValidator();
+            if (!emailValidator.isValid(empresa.getEmail(), null)){
+                return  UpdateEmpresaResult.EMAIL_INVALIDO;
+            }
+            empresaTransportistaEntity.setEmail(empresa.getEmail());
+        }
+        empresaTransportistaRepository.save(empresaTransportistaEntity);
+        return UpdateEmpresaResult.UPDATED;
     }
 
     public Page<EmpresaTransportistaEntity> getEmpresas(Pageable page) {
