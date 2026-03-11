@@ -115,6 +115,10 @@ public class SecurityConfig {
                     .requestMatchers(HttpMethod.GET,
                         "/api/v1/empresas"
                     ).hasAnyRole("ADMIN", "OPERADOR")
+                    .requestMatchers(HttpMethod.GET,
+                        "/api/v1/camiones",
+                        "/api/v1/camiones/{id}"
+                    ).hasAnyRole("ADMIN", "OPERADOR", "TRANSPORTISTA")
                     .requestMatchers(
                         "/api/v1/auth/login",
                         "/swagger-ui/**",
