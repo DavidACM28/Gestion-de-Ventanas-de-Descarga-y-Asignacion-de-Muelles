@@ -107,7 +107,8 @@ public class SecurityConfig {
                     .requestMatchers(HttpMethod.POST,
                         "/api/v1/auth/register",
                         "/api/v1/empresas",
-                        "/api/v1/camiones"
+                        "/api/v1/camiones",
+                        "/api/v1/muelles"
                     ).hasRole("ADMIN")
                     .requestMatchers(HttpMethod.PUT,
                         "/api/v1/empresas/{id}",

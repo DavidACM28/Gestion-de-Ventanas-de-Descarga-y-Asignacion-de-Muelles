@@ -18,7 +18,9 @@ public class MuelleEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "codigo", unique = true)
     private String codigo;
+
     private String nombre;
     private String tipoCargaPermitida;
     private BigDecimal capacidadToneladas;
