@@ -1,6 +1,8 @@
 package pe.incubadora.backend.services;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pe.incubadora.backend.dtos.MuelleDTO;
@@ -27,5 +29,13 @@ public class MuelleService {
         muelleEntity.setNombre(muelle.getNombre());
         muelleRepository.save(muelleEntity);
         return true;
+    }
+
+    public Page<MuelleEntity> getMuelles(Pageable pageable) {
+        return muelleRepository.findAll(pageable);
+    }
+
+    public MuelleEntity getMuelle(Long id) {
+        return muelleRepository.findById(id).orElse(null);
     }
 }

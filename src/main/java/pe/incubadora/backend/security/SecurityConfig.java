@@ -119,7 +119,9 @@ public class SecurityConfig {
                     ).hasAnyRole("ADMIN", "OPERADOR")
                     .requestMatchers(HttpMethod.GET,
                         "/api/v1/camiones",
-                        "/api/v1/camiones/{id}"
+                        "/api/v1/camiones/{id}",
+                        "/api/v1/muelles",
+                        "/api/v1/muelles/{id}"
                     ).hasAnyRole("ADMIN", "OPERADOR", "TRANSPORTISTA")
                     .requestMatchers(
                         "/api/v1/auth/login",
