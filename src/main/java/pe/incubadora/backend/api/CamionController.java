@@ -5,21 +5,17 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 import pe.incubadora.backend.dtos.CamionDTO;
 import pe.incubadora.backend.dtos.ErrorResponseDTO;
 import pe.incubadora.backend.entities.CamionEntity;
-import pe.incubadora.backend.entities.UsuarioEntity;
 import pe.incubadora.backend.repositories.UsuarioRepository;
 import pe.incubadora.backend.services.CamionService;
 import pe.incubadora.backend.utils.CreateCamionResult;
+import pe.incubadora.backend.utils.UpdateCamionResult;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -40,19 +36,43 @@ public class CamionController {
             response.put("errors", errores);
             return ResponseEntity.badRequest().body(response);
         }
-        try{
-            CreateCamionResult resultado  = camionService.crearCamion(camionDTO);
-            return switch (resultado){
+        try {
+            CreateCamionResult resultado = camionService.crearCamion(camionDTO);
+            return switch (resultado) {
                 case EMPRESA_NOT_FOUND -> ResponseEntity.status(HttpStatus.NOT_FOUND).body(
                     new ErrorResponseDTO("EMPRESA_NOT_FOUND", "Empresa no encontrada"));
                 case TIPO_CARGA_NOT_VALID -> ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
                     new ErrorResponseDTO("VALIDATION_ERROR", "El tipo de carga no es valido, use: SECA | REFRIGERADA"));
-                case CREATED ->  ResponseEntity.status(HttpStatus.CREATED).body("Se creó el camión exitosamente");
+                case CREATED -> ResponseEntity.status(HttpStatus.CREATED).body("Se creó el camión exitosamente");
             };
-        }
-        catch (Exception e){
+        } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
                 new ErrorResponseDTO("VALIDATION_ERROR", "Ya existe un camión con esta placa"));
+        }
+    }
+
+    @PutMapping("/camiones/{id}")
+    public ResponseEntity<Object> updateCamiones(@RequestBody CamionDTO camionDTO, @PathVariable Long id) {
+        try {
+            UpdateCamionResult resultado = camionService.updateCamion(camionDTO, id);
+            return switch (resultado) {
+                case CAMION_NOT_FOUND -> ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+                    new ErrorResponseDTO("CAMION_NOT_FOUND", "Camión no encontrado"));
+                case PLACA_INVALIDA -> ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                    new ErrorResponseDTO("VALIDATION_ERROR", "Placa inválida, use formato: ABC-123"));
+                case EMPRESA_NOT_FOUND -> ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+                    new ErrorResponseDTO("EMPRESA_NOT_FOUND", "Empresa no encontrada"));
+                case CAMION_ASIGNADO ->  ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                    new ErrorResponseDTO("VALIDATION_ERROR", "No se puede cambiar la empresa, el camión aún tiene un conductor asignado"));
+                case TIPO_CARGA_INVALIDA -> ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                    new ErrorResponseDTO("VALIDATION_ERROR", "Tipo de carga inválida, use: SECA | REFRIGERADA"));
+                case CAPACIDAD_INVALIDA -> ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                    new ErrorResponseDTO("VALIDATION_ERROR", "Capacidad de carga inválida, debe ser mayor a 0"));
+                case UPDATED -> ResponseEntity.status(HttpStatus.OK).body("El camión se actualizó correctamente");
+            };
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                new ErrorResponseDTO("VALIDATION_ERROR", "La placa ingresada ya está registrada"));
         }
     }
 
@@ -69,7 +89,7 @@ public class CamionController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
                 new ErrorResponseDTO("CAMION_NOT_FOUND", "Camión no encontrado"));
         }
-        return  ResponseEntity.ok().body(camion);
+        return ResponseEntity.ok().body(camion);
     }
 
 

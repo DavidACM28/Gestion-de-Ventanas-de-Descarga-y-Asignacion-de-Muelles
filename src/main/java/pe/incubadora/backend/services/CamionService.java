@@ -8,6 +8,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import pe.incubadora.backend.dtos.CamionDTO;
 import pe.incubadora.backend.entities.CamionEntity;
 import pe.incubadora.backend.entities.EmpresaTransportistaEntity;
@@ -16,6 +17,7 @@ import pe.incubadora.backend.repositories.CamionRepository;
 import pe.incubadora.backend.repositories.EmpresaTransportistaRepository;
 import pe.incubadora.backend.repositories.UsuarioRepository;
 import pe.incubadora.backend.utils.CreateCamionResult;
+import pe.incubadora.backend.utils.UpdateCamionResult;
 
 import java.util.List;
 
@@ -28,13 +30,15 @@ public class CamionService {
     @Autowired
     private UsuarioRepository usuarioRepository;
 
+
+    @Transactional
     public CreateCamionResult crearCamion(CamionDTO camion) {
         EmpresaTransportistaEntity empresaTransportistaEntity = empresaTransportistaRepository.findById(camion.getEmpresaId()).orElse(null);
         if (empresaTransportistaEntity == null) {
             return CreateCamionResult.EMPRESA_NOT_FOUND;
         }
         if (!camion.getTipoCarga().equalsIgnoreCase("seca") && !camion.getTipoCarga().equalsIgnoreCase("refrigerada")) {
-            return  CreateCamionResult.TIPO_CARGA_NOT_VALID;
+            return CreateCamionResult.TIPO_CARGA_NOT_VALID;
         }
         CamionEntity camionEntity = new CamionEntity();
         camionEntity.setActivo(true);
@@ -56,6 +60,43 @@ public class CamionService {
             return new PageImpl<>(List.of(usuario.getCamion()), page, 1);
         }
         return camionRepository.findAll(page);
+    }
+
+    @Transactional
+    public UpdateCamionResult updateCamion(CamionDTO camion, Long id) {
+        CamionEntity camionEntity = camionRepository.findById(id).orElse(null);
+        if (camionEntity == null) {
+            return UpdateCamionResult.CAMION_NOT_FOUND;
+        }
+        if (camion.getPlaca() != null) {
+            if (!camion.getPlaca().matches("^[A-Z]{3}-[0-9]{3}$")) {
+                return UpdateCamionResult.PLACA_INVALIDA;
+            }
+            camionEntity.setPlaca(camion.getPlaca());
+        }
+        if (camion.getEmpresaId() != null) {
+            if (!empresaTransportistaRepository.existsById(camion.getEmpresaId())) {
+                return UpdateCamionResult.EMPRESA_NOT_FOUND;
+            }
+            if (usuarioRepository.existsByCamionId(camionEntity.getId())) {
+                return UpdateCamionResult.CAMION_ASIGNADO;
+            }
+            camionEntity.setEmpresa(empresaTransportistaRepository.findById(camion.getEmpresaId()).orElse(null));
+        }
+        if (camion.getTipoCarga() != null) {
+            if (!camion.getTipoCarga().equalsIgnoreCase("seca") &&  !camion.getTipoCarga().equalsIgnoreCase("refrigerada")) {
+                return UpdateCamionResult.TIPO_CARGA_INVALIDA;
+            }
+            camionEntity.setTipoCarga(camion.getTipoCarga().toUpperCase());
+        }
+        if (camion.getCapacidadToneladas() != null) {
+            if (camion.getCapacidadToneladas().doubleValue() < 0.1){
+                return UpdateCamionResult.CAPACIDAD_INVALIDA;
+            }
+            camionEntity.setCapacidadToneladas(camion.getCapacidadToneladas());
+        }
+        camionRepository.save(camionEntity);
+        return UpdateCamionResult.UPDATED;
     }
 
     public CamionEntity getCamion(Long id) {
