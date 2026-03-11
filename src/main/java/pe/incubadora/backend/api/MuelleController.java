@@ -11,6 +11,7 @@ import pe.incubadora.backend.dtos.ErrorResponseDTO;
 import pe.incubadora.backend.dtos.MuelleDTO;
 import pe.incubadora.backend.entities.MuelleEntity;
 import pe.incubadora.backend.services.MuelleService;
+import pe.incubadora.backend.utils.UpdateMuelleResult;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -37,10 +38,30 @@ public class MuelleController {
             }
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
                 new ErrorResponseDTO("VALIDATION_ERROR", "Tipo de carga inválida, use: SECA | REFRIGERADA"));
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
                 new ErrorResponseDTO("VALIDATION_ERROR", "Ya hay un muelle registrado con este código"));
+        }
+    }
+
+    @PutMapping("/muelles/{id}")
+    private ResponseEntity<Object> updateMuelle(@RequestBody MuelleDTO muelleDTO, @PathVariable Long id) {
+        try {
+            UpdateMuelleResult resultado = muelleService.actualizarMuelle(muelleDTO, id);
+            return switch (resultado) {
+                case MUELLE_NOT_FOUND -> ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+                    new ErrorResponseDTO("MUELLE_NOT_FOUND", "Muelle no encontrado"));
+                case NOMBRE_INVALIDO -> ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                    new ErrorResponseDTO("VALIDATION_ERROR", "Nombre inválido, el nombre debe tener por lo menos 3 caracteres"));
+                case TIPO_CARGA_INVALIDA -> ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                    new ErrorResponseDTO("VALIDATION_ERROR", "Tipo de carga inválida, use: SECA | REFRIGERADA"));
+                case CAPACIDAD_INVALIDA -> ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                    new ErrorResponseDTO("VALIDATION_ERROR", "Capacidad inválida, la capacidad debe ser mayor a 0"));
+                case UPDATED -> ResponseEntity.status(HttpStatus.OK).body("El muelle se actualizó con éxito");
+            };
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                new ErrorResponseDTO("VALIDATION_ERROR", "El código ingresado ya está registrado"));
         }
     }
 
