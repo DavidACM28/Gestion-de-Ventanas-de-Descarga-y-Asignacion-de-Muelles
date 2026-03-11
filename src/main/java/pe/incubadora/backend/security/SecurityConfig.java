@@ -106,7 +106,8 @@ public class SecurityConfig {
                 authorizeRequests
                     .requestMatchers(HttpMethod.POST,
                         "/api/v1/auth/register",
-                        "/api/v1/empresas"
+                        "/api/v1/empresas",
+                        "/api/v1/camiones"
                     ).hasRole("ADMIN")
                     .requestMatchers(HttpMethod.PUT,
                         "/api/v1/empresas/{id}"
