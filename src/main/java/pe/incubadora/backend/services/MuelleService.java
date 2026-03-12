@@ -52,7 +52,7 @@ public class MuelleService {
             {
                 return UpdateMuelleResult.TIPO_CARGA_INVALIDA;
             }
-            muelleEntity.setTipoCargaPermitida(muelle.getTipoCargaPermitida());
+            muelleEntity.setTipoCargaPermitida(muelle.getTipoCargaPermitida().toUpperCase());
         }
         if (muelle.getCapacidadToneladas() != null) {
             if (muelle.getCapacidadToneladas().doubleValue() < 0.1) {
