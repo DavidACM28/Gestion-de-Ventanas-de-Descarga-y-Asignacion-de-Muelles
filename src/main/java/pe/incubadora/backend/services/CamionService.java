@@ -10,6 +10,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pe.incubadora.backend.dtos.CamionDTO;
+import pe.incubadora.backend.dtos.UpdateCamionDTO;
 import pe.incubadora.backend.entities.CamionEntity;
 import pe.incubadora.backend.entities.EmpresaTransportistaEntity;
 import pe.incubadora.backend.entities.UsuarioEntity;
@@ -63,16 +64,10 @@ public class CamionService {
     }
 
     @Transactional
-    public UpdateCamionResult updateCamion(CamionDTO camion, Long id) {
+    public UpdateCamionResult updateCamion(UpdateCamionDTO camion, Long id) {
         CamionEntity camionEntity = camionRepository.findById(id).orElse(null);
         if (camionEntity == null) {
             return UpdateCamionResult.CAMION_NOT_FOUND;
-        }
-        if (camion.getPlaca() != null) {
-            if (!camion.getPlaca().matches("^[A-Z]{3}-[0-9]{3}$")) {
-                return UpdateCamionResult.PLACA_INVALIDA;
-            }
-            camionEntity.setPlaca(camion.getPlaca());
         }
         if (camion.getEmpresaId() != null) {
             if (!empresaTransportistaRepository.existsById(camion.getEmpresaId())) {

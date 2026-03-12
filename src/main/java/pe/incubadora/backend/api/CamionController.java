@@ -9,6 +9,7 @@ import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 import pe.incubadora.backend.dtos.CamionDTO;
 import pe.incubadora.backend.dtos.ErrorResponseDTO;
+import pe.incubadora.backend.dtos.UpdateCamionDTO;
 import pe.incubadora.backend.entities.CamionEntity;
 import pe.incubadora.backend.repositories.UsuarioRepository;
 import pe.incubadora.backend.services.CamionService;
@@ -52,7 +53,7 @@ public class CamionController {
     }
 
     @PutMapping("/camiones/{id}")
-    public ResponseEntity<Object> updateCamiones(@RequestBody CamionDTO camionDTO, @PathVariable Long id) {
+    public ResponseEntity<Object> updateCamiones(@RequestBody UpdateCamionDTO camionDTO, @PathVariable Long id) {
         try {
             UpdateCamionResult resultado = camionService.updateCamion(camionDTO, id);
             return switch (resultado) {
