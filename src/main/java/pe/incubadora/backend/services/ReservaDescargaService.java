@@ -1,6 +1,11 @@
 package pe.incubadora.backend.services;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -174,6 +179,66 @@ public class ReservaDescargaService {
         return UpdateReservaResult.UPDATED;
     }
 
+    public ReservaDescargaEntity getReserva(Long id) {
+        ReservaDescargaEntity reserva = reservaDescargaRepository.findById(id).orElse(null);
+        if (reserva == null) {
+            return null;
+        }
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        assert auth != null;
+        List<String> roles = auth.getAuthorities().stream().map(GrantedAuthority::getAuthority).toList();
+        if (roles.contains("ROLE_TRANSPORTISTA")) {
+            UsuarioEntity usuario = usuarioRepository.findByUsername(auth.getName()).orElse(null);
+            assert usuario != null;
+            if (!usuario.getCamion().getId().equals(reserva.getCamion().getId())) {
+                return null;
+            }
+        }
+        return reserva;
+    }
+
+    public Page<ReservaDescargaEntity> getReservasConFiltros(
+        Long muelleId, Long camionId, Long empresaId, LocalDate fechaDesde, LocalDate fechaHasta,
+        String estado, String tipoCarga, int page, int size, String sort) {
+
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        assert auth != null;
+        List<String> roles = auth.getAuthorities().stream().map(GrantedAuthority::getAuthority).toList();
+        UsuarioEntity usuario = usuarioRepository.findByUsername(auth.getName()).orElse(null);
+        assert usuario != null;
+
+        Specification<ReservaDescargaEntity> spec = Specification.where((_, _, cb) -> cb.conjunction());
+
+        if (roles.contains("ROLE_TRANSPORTISTA")) {
+            spec = spec.and((root, _, cb) -> cb.equal(root.get("camion").get("id"), usuario.getCamion().getId()));
+        }
+        if (muelleId != null) {
+            spec = spec.and((root, _, cb) -> cb.equal(root.get("muelle").get("id"), muelleId));
+        }
+        if (camionId != null) {
+            spec = spec.and((root, _, cb) -> cb.equal(root.get("camion").get("id"), camionId));
+        }
+        if (empresaId != null) {
+            spec = spec.and((root, _, cb) -> cb.equal(root.get("camion").get("empresa").get("id"), empresaId));
+        }
+        if (fechaDesde != null) {
+            spec = spec.and((root, _, cb) -> cb.greaterThanOrEqualTo(root.get("fecha"), fechaDesde));
+        }
+        if (fechaHasta != null) {
+            spec = spec.and((root, _, cb) -> cb.lessThanOrEqualTo(root.get("fecha"), fechaHasta));
+        }
+        if (estado != null) {
+            spec = spec.and((root, _, cb) -> cb.equal(root.get("estado"), estado.toUpperCase()));
+        }
+        if (tipoCarga != null) {
+            spec = spec.and((root, _, cb) -> cb.equal(root.get("muelle").get("tipoCargaPermitida"), tipoCarga.toUpperCase()));
+        }
+
+        Sort.Direction direction = "descending".equalsIgnoreCase(sort) ? Sort.Direction.DESC : Sort.Direction.ASC;
+        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, "id"));
+        return reservaDescargaRepository.findAll(spec, pageable);
+    }
+
     private UpdateReservaResult validarUpdateReserva(ReservaDTO dto, ReservaDescargaEntity reserva) {
         MuelleEntity muelle = reserva.getMuelle();
         CamionEntity camion = reserva.getCamion();
@@ -209,7 +274,7 @@ public class ReservaDescargaService {
         if (LocalDateTime.of(fechaFinal, horaFinal).isBefore(LocalDateTime.now())) {
             return UpdateReservaResult.FECHA_PASADA;
         }
-        if (LocalDateTime.of(fechaFinal, horaFinal).isBefore(LocalDateTime.now().plusMinutes(30))){
+        if (LocalDateTime.of(fechaFinal, horaFinal).isBefore(LocalDateTime.now().plusMinutes(30))) {
             return UpdateReservaResult.HORA_MUY_CERCANA;
         }
         if (dto.getDuracionMin() != null && !duracionesValidas.contains(dto.getDuracionMin())) {
@@ -225,11 +290,12 @@ public class ReservaDescargaService {
         }
         return null;
     }
+
     private void aplicarCambios(ReservaDTO dto, ReservaDescargaEntity reserva) {
-        if (dto.getMuelleId() != null){
+        if (dto.getMuelleId() != null) {
             reserva.setMuelle(muelleRepository.findById(dto.getMuelleId()).orElse(null));
         }
-        if (dto.getCamionId() != null){
+        if (dto.getCamionId() != null) {
             reserva.setCamion(camionRepository.findById(dto.getCamionId()).orElse(null));
         }
         if (dto.getFecha() != null) {
@@ -252,7 +318,7 @@ public class ReservaDescargaService {
         }
     }
 
-    public List<LocalTime> calcularSlots(LocalTime horaInicio, int duracionMin) {
+    private List<LocalTime> calcularSlots(LocalTime horaInicio, int duracionMin) {
         List<LocalTime> slots = new ArrayList<>();
         LocalTime horaFin = horaInicio.plusMinutes(duracionMin);
         LocalTime slotActual = LocalTime.of(horaInicio.getHour(), (horaInicio.getMinute() / 30) * 30);

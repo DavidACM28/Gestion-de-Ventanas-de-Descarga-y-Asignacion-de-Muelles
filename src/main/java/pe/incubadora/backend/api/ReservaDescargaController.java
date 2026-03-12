@@ -2,16 +2,23 @@ package pe.incubadora.backend.api;
 
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import pe.incubadora.backend.dtos.ErrorResponseDTO;
 import pe.incubadora.backend.dtos.ReservaDTO;
+import pe.incubadora.backend.entities.ReservaDescargaEntity;
 import pe.incubadora.backend.services.ReservaDescargaService;
 import pe.incubadora.backend.utils.CreateReservaDescargaResult;
 import pe.incubadora.backend.utils.UpdateReservaResult;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -20,6 +27,30 @@ import java.util.Map;
 public class ReservaDescargaController {
     @Autowired
     private ReservaDescargaService reservaDescargaService;
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<Object> handleTypeMismatchException() {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+            new ErrorResponseDTO("VALIDATION_ERROR", "Asegúrese de que los filtros se envíen con el formato correcto"));
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Object> handleIllegalArgumentException() {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+            new ErrorResponseDTO("VALIDATION_ERROR", "Asegúrese de que los filtros se envíen con el formato correcto"));
+    }
+
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<Object> handleMissingServletRequestParameterException() {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+            new ErrorResponseDTO("VALIDATION_ERROR", "Los parámetros: size, page, y sort, son obligatorios"));
+    }
+
+    @ExceptionHandler(DateTimeParseException.class)
+    public ResponseEntity<Object> handleDateTimeParseException() {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+            new ErrorResponseDTO("VALIDATION_ERROR", "Fecha invalida. Use formato yyyy-MM-dd"));
+    }
 
     @PostMapping("/reservas")
     private ResponseEntity<Object> crearReserva(@Valid @RequestBody ReservaDTO reservaDTO, BindingResult result) {
@@ -96,5 +127,34 @@ public class ReservaDescargaController {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(
                 new ErrorResponseDTO("RESERVA_CONFLICT", "Ya existe una reserva en este rango de hora"));
         }
+    }
+
+    @GetMapping("/reservas/{id}")
+    public ResponseEntity<Object> getReserva(@PathVariable Long id) {
+        ReservaDescargaEntity reservaDescargaEntity = reservaDescargaService.getReserva(id);
+        if (reservaDescargaEntity == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+                new ErrorResponseDTO("RESERVA_NOT_FOUND", "No se encontró la reserva"));
+        }
+        return ResponseEntity.status(HttpStatus.OK).body(reservaDescargaEntity);
+    }
+
+    @GetMapping("/reservas")
+    public ResponseEntity<Object> getReservas(
+        @RequestParam(required = false) Long muelleId, @RequestParam(required = false) Long camionId,
+        @RequestParam(required = false) Long empresaId, @RequestParam(required = false) String fechaDesde,
+        @RequestParam(required = false) String fechaHasta, @RequestParam(required = false) String estado,
+        @RequestParam(required = false) String tipoCarga, @RequestParam int page,
+        @RequestParam int size, String sort) {
+
+        LocalDate desde = fechaDesde != null ? LocalDate.parse(fechaDesde, DateTimeFormatter.ISO_DATE) : null;
+        LocalDate hasta = fechaHasta != null ? LocalDate.parse(fechaHasta, DateTimeFormatter.ISO_DATE) : null;
+        if (desde != null && hasta != null && !desde.isBefore(hasta) && !desde.isEqual(hasta)) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                new ErrorResponseDTO("VALIDATION_ERROR", "La fecha límite de búsqueda no puede ser anterior a la fecha de inicio de búsqueda"));
+        }
+        Page<ReservaDescargaEntity> reservas =
+            reservaDescargaService.getReservasConFiltros(muelleId, camionId, empresaId, desde, hasta, estado, tipoCarga, page, size, sort);
+        return  ResponseEntity.status(HttpStatus.OK).body(reservas);
     }
 }

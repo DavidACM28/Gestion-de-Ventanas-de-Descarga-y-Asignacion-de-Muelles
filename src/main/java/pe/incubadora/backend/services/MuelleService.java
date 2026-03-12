@@ -23,7 +23,7 @@ public class MuelleService {
         }
         MuelleEntity muelleEntity = new MuelleEntity();
         muelleEntity.setActivo(true);
-        muelleEntity.setTipoCargaPermitida(muelle.getTipoCargaPermitida());
+        muelleEntity.setTipoCargaPermitida(muelle.getTipoCargaPermitida().toUpperCase());
         muelleEntity.setCapacidadToneladas(muelle.getCapacidadToneladas());
         muelleEntity.setCodigo(muelle.getCodigo());
         muelleEntity.setNombre(muelle.getNombre());
