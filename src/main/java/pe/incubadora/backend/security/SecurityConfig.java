@@ -110,6 +110,9 @@ public class SecurityConfig {
                         "/api/v1/camiones",
                         "/api/v1/muelles"
                     ).hasRole("ADMIN")
+                    .requestMatchers(HttpMethod.POST,
+                        "/api/v1/reservas"
+                    ).hasAnyRole("ADMIN", "OPERADOR", "TRANSPORTISTA")
                     .requestMatchers(HttpMethod.PUT,
                         "/api/v1/empresas/{id}",
                         "/api/v1/camiones/{id}",
