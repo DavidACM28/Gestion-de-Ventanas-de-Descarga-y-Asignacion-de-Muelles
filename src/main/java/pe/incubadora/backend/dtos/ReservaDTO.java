@@ -27,7 +27,7 @@ public class ReservaDTO {
     @NotNull(message = "La duración en minutos es obligatoria")
     @Min(value = 30, message = "La duración debe ser: 30 | 60 | 90 | 120")
     @Max(value = 120, message = "La duración debe ser: 30 | 60 | 90 | 120")
-    private int duracionMin;
+    private Integer duracionMin;
 
     @NotNull(message = "El peso estimado en toneladas es obligatorio")
     @DecimalMin(value = "0.1", message = "El peso debe ser mayor a 0")

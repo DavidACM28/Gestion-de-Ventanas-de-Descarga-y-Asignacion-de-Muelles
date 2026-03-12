@@ -10,7 +10,9 @@ import pe.incubadora.backend.dtos.ReservaDTO;
 import pe.incubadora.backend.entities.*;
 import pe.incubadora.backend.repositories.*;
 import pe.incubadora.backend.utils.CreateReservaDescargaResult;
+import pe.incubadora.backend.utils.UpdateReservaResult;
 
+import java.time.DateTimeException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -33,6 +35,8 @@ public class ReservaDescargaService {
     @Autowired
     private UsuarioRepository usuarioRepository;
 
+    private final List<Integer> duracionesValidas = List.of(30, 60, 90, 120);
+
     @Transactional
     public CreateReservaDescargaResult crearReserva(ReservaDTO reservaDTO) {
         LocalTime horaInicio;
@@ -49,7 +53,7 @@ public class ReservaDescargaService {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         assert auth != null;
         List<String> roles = auth.getAuthorities().stream().map(GrantedAuthority::getAuthority).toList();
-        if (roles.contains("ROLE_TRANSPORTISTA")){
+        if (roles.contains("ROLE_TRANSPORTISTA")) {
             UsuarioEntity usuario = usuarioRepository.findByUsername(auth.getName()).orElse(null);
             assert usuario != null;
             if (!usuario.getCamion().getId().equals(camionEntity.getId())) {
@@ -60,7 +64,7 @@ public class ReservaDescargaService {
             return CreateReservaDescargaResult.TIPO_CARGA_INVALIDA;
         }
         if (reservaDTO.getPesoEstimadoToneladas().compareTo(muelleEntity.getCapacidadToneladas()) > 0) {
-            return  CreateReservaDescargaResult.PESO_EXCEDE_MUELLE;
+            return CreateReservaDescargaResult.PESO_EXCEDE_MUELLE;
         }
         try {
             fecha = LocalDate.parse(reservaDTO.getFecha());
@@ -76,7 +80,6 @@ public class ReservaDescargaService {
         if (fechaYHoraInicio.isBefore(LocalDateTime.now())) {
             return CreateReservaDescargaResult.FECHA_PASADA;
         }
-        List<Integer> duracionesValidas = List.of(30, 60, 90, 120);
         if (!duracionesValidas.contains(reservaDTO.getDuracionMin())) {
             return CreateReservaDescargaResult.DURACION_INVALIDA;
         }
@@ -111,6 +114,142 @@ public class ReservaDescargaService {
         }
         reservaSlotRepository.saveAll(slotsEntities);
         return CreateReservaDescargaResult.CREATED;
+    }
+
+    @Transactional
+    public UpdateReservaResult updateReserva(ReservaDTO reservaDTO, Long id) {
+        ReservaDescargaEntity reserva = reservaDescargaRepository.findById(id).orElse(null);
+        if (reserva == null) {
+            return UpdateReservaResult.RESERVA_NOT_FOUND;
+        }
+        UpdateReservaResult resultado = validarUpdateReserva(reservaDTO, reserva);
+        if (resultado != null) {
+            return resultado;
+        }
+
+        LocalDate fecha = reserva.getFecha();
+        LocalTime horaInicio = reserva.getHoraInicio();
+        int duracion = reserva.getDuracionMin();
+        MuelleEntity muelle = reserva.getMuelle();
+
+        if (reservaDTO.getFecha() != null) {
+            fecha = LocalDate.parse(reservaDTO.getFecha());
+        }
+        if (reservaDTO.getHoraInicio() != null) {
+            horaInicio = LocalTime.parse(reservaDTO.getHoraInicio());
+        }
+        if (reservaDTO.getDuracionMin() != null) {
+            duracion = reservaDTO.getDuracionMin();
+        }
+        if (reservaDTO.getMuelleId() != null) {
+            muelle = muelleRepository.findById(reservaDTO.getMuelleId()).orElse(null);
+        }
+        if (muelle == null) {
+            return UpdateReservaResult.MUELLE_NOT_FOUND;
+        }
+
+        LocalTime finDescarga = horaInicio.plusMinutes(duracion);
+        List<CierreOperativoEntity> cierresOperativosEnRango = cierreOperativoRepository.findCierresOperativosEnRango(
+            muelle.getId(), fecha, finDescarga, horaInicio);
+        if (!cierresOperativosEnRango.isEmpty()) {
+            return UpdateReservaResult.CIERRE_CONFLICT;
+        }
+
+        List<ReservaSlotEntity> slotsActuales = reservaSlotRepository.findAllByReservaId(reserva.getId());
+        reservaSlotRepository.deleteAll(slotsActuales);
+
+        List<LocalTime> slotsNuevos = calcularSlots(horaInicio, duracion);
+
+        for (LocalTime slot : slotsNuevos) {
+            ReservaSlotEntity nuevoSlot = new ReservaSlotEntity();
+            nuevoSlot.setHoraSlot(slot);
+            nuevoSlot.setFecha(fecha);
+            nuevoSlot.setReserva(reserva);
+            nuevoSlot.setMuelle(muelle);
+
+            reservaSlotRepository.save(nuevoSlot);
+        }
+        aplicarCambios(reservaDTO, reserva);
+        reservaDescargaRepository.save(reserva);
+        return UpdateReservaResult.UPDATED;
+    }
+
+    private UpdateReservaResult validarUpdateReserva(ReservaDTO dto, ReservaDescargaEntity reserva) {
+        MuelleEntity muelle = reserva.getMuelle();
+        CamionEntity camion = reserva.getCamion();
+
+        if (dto.getMuelleId() != null) {
+            muelle = muelleRepository.findById(dto.getMuelleId()).orElse(null);
+            if (muelle == null) return UpdateReservaResult.MUELLE_NOT_FOUND;
+        }
+        if (dto.getCamionId() != null) {
+            camion = camionRepository.findById(dto.getCamionId()).orElse(null);
+            if (camion == null) return UpdateReservaResult.CAMION_NOT_FOUND;
+        }
+        if (!muelle.getTipoCargaPermitida().equals(camion.getTipoCarga())) {
+            return UpdateReservaResult.NO_COINCIDEN;
+        }
+
+        LocalDate fechaFinal = reserva.getFecha();
+        LocalTime horaFinal = reserva.getHoraInicio();
+        if (dto.getFecha() != null) {
+            try {
+                fechaFinal = LocalDate.parse(dto.getFecha());
+            } catch (DateTimeException e) {
+                return UpdateReservaResult.FECHA_INVALIDA;
+            }
+        }
+        if (dto.getHoraInicio() != null) {
+            try {
+                horaFinal = LocalTime.parse(dto.getHoraInicio());
+            } catch (DateTimeException e) {
+                return UpdateReservaResult.HORA_INVALIDA;
+            }
+        }
+        if (LocalDateTime.of(fechaFinal, horaFinal).isBefore(LocalDateTime.now())) {
+            return UpdateReservaResult.FECHA_PASADA;
+        }
+        if (LocalDateTime.of(fechaFinal, horaFinal).isBefore(LocalDateTime.now().plusMinutes(30))){
+            return UpdateReservaResult.HORA_MUY_CERCANA;
+        }
+        if (dto.getDuracionMin() != null && !duracionesValidas.contains(dto.getDuracionMin())) {
+            return UpdateReservaResult.DURACION_INVALIDA;
+        }
+        if (dto.getPesoEstimadoToneladas() != null) {
+            if (dto.getPesoEstimadoToneladas().compareTo(muelle.getCapacidadToneladas()) > 0) {
+                return UpdateReservaResult.PESO_EXCEDE;
+            }
+        }
+        if (dto.getTipoMercaderia() != null && dto.getTipoMercaderia().trim().length() < 3) {
+            return UpdateReservaResult.TIPO_MERCADERIA_INVALIDO;
+        }
+        return null;
+    }
+    private void aplicarCambios(ReservaDTO dto, ReservaDescargaEntity reserva) {
+        if (dto.getMuelleId() != null){
+            reserva.setMuelle(muelleRepository.findById(dto.getMuelleId()).orElse(null));
+        }
+        if (dto.getCamionId() != null){
+            reserva.setCamion(camionRepository.findById(dto.getCamionId()).orElse(null));
+        }
+        if (dto.getFecha() != null) {
+            reserva.setFecha(LocalDate.parse(dto.getFecha()));
+        }
+        if (dto.getHoraInicio() != null) {
+            reserva.setHoraInicio(LocalTime.parse(dto.getHoraInicio()));
+        }
+        if (dto.getDuracionMin() != null) {
+            reserva.setDuracionMin(dto.getDuracionMin());
+        }
+        if (dto.getPesoEstimadoToneladas() != null) {
+            reserva.setPesoEstimadoToneladas(dto.getPesoEstimadoToneladas());
+        }
+        if (dto.getTipoMercaderia() != null) {
+            reserva.setTipoMercaderia(dto.getTipoMercaderia());
+        }
+        if (dto.getNota() != null) {
+            reserva.setNota(dto.getNota());
+        }
     }
 
     public List<LocalTime> calcularSlots(LocalTime horaInicio, int duracionMin) {

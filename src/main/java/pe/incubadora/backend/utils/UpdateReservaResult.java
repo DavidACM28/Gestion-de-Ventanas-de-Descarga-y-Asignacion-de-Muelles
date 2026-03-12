@@ -1,0 +1,17 @@
+package pe.incubadora.backend.utils;
+
+public enum UpdateReservaResult {
+    RESERVA_NOT_FOUND,
+    MUELLE_NOT_FOUND,
+    CAMION_NOT_FOUND,
+    NO_COINCIDEN,
+    FECHA_INVALIDA,
+    HORA_INVALIDA,
+    FECHA_PASADA,
+    HORA_MUY_CERCANA,
+    DURACION_INVALIDA,
+    PESO_EXCEDE,
+    TIPO_MERCADERIA_INVALIDO,
+    CIERRE_CONFLICT,
+    UPDATED
+}
