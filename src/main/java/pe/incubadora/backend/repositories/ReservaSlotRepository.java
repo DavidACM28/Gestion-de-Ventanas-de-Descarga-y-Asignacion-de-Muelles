@@ -9,4 +9,5 @@ import java.util.List;
 @Repository
 public interface ReservaSlotRepository extends JpaRepository<ReservaSlotEntity, Long> {
     List<ReservaSlotEntity> findAllByReservaId(Long reservaId);
+    void deleteByReservaId(Long reservaId);
 }
