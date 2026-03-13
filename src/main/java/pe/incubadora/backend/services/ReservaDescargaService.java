@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import pe.incubadora.backend.dtos.ReservaDTO;
 import pe.incubadora.backend.entities.*;
 import pe.incubadora.backend.repositories.*;
+import pe.incubadora.backend.utils.CambiarEstadoReservaResult;
 import pe.incubadora.backend.utils.CreateReservaDescargaResult;
 import pe.incubadora.backend.utils.UpdateReservaResult;
 
@@ -237,6 +238,120 @@ public class ReservaDescargaService {
         Sort.Direction direction = "descending".equalsIgnoreCase(sort) ? Sort.Direction.DESC : Sort.Direction.ASC;
         Pageable pageable = PageRequest.of(page, size, Sort.by(direction, "id"));
         return reservaDescargaRepository.findAll(spec, pageable);
+    }
+
+    public CambiarEstadoReservaResult confirmarReserva(Long id) {
+
+        ReservaDescargaEntity reserva = reservaDescargaRepository.findById(id).orElse(null);
+        if (reserva == null) {
+            return CambiarEstadoReservaResult.RESERVA_NOT_FOUND;
+        }
+        if (!reserva.getEstado().equals("SOLICITADA")) {
+            return CambiarEstadoReservaResult.ESTADO_INVALIDO;
+        }
+        reserva.setEstado("CONFIRMADA");
+        reservaDescargaRepository.save(reserva);
+        return CambiarEstadoReservaResult.OK;
+    }
+
+    public CambiarEstadoReservaResult checkInReserva(Long id) {
+        ReservaDescargaEntity reserva = reservaDescargaRepository.findById(id).orElse(null);
+
+        if (reserva == null) {
+            return CambiarEstadoReservaResult.RESERVA_NOT_FOUND;
+        }
+        if (!reserva.getEstado().equals("CONFIRMADA")) {
+            return CambiarEstadoReservaResult.ESTADO_INVALIDO;
+        }
+        LocalDateTime inicio = LocalDateTime.of(reserva.getFecha(), reserva.getHoraInicio());
+        LocalDateTime inicioVentana = inicio.minusMinutes(30);
+        LocalDateTime finVentana = inicio.plusMinutes(20);
+        LocalDateTime ahora = LocalDateTime.now();
+
+        if (ahora.isBefore(inicioVentana) || ahora.isAfter(finVentana)) {
+            return CambiarEstadoReservaResult.FUERA_DE_VENTANA;
+        }
+        reserva.setEstado("CHECK_IN");
+        reservaDescargaRepository.save(reserva);
+        return CambiarEstadoReservaResult.OK;
+    }
+
+    public CambiarEstadoReservaResult iniciarReserva(Long id) {
+        ReservaDescargaEntity reserva = reservaDescargaRepository.findById(id).orElse(null);
+
+        if (reserva == null) {
+            return CambiarEstadoReservaResult.RESERVA_NOT_FOUND;
+        }
+        if (!reserva.getEstado().equals("CHECK_IN")) {
+            return CambiarEstadoReservaResult.ESTADO_INVALIDO;
+        }
+        reserva.setEstado("EN_DESCARGA");
+        reservaDescargaRepository.save(reserva);
+        return CambiarEstadoReservaResult.OK;
+    }
+
+    public CambiarEstadoReservaResult finalizarReserva(Long id) {
+
+        ReservaDescargaEntity reserva = reservaDescargaRepository.findById(id).orElse(null);
+
+        if (reserva == null) {
+            return CambiarEstadoReservaResult.RESERVA_NOT_FOUND;
+        }
+        if (!reserva.getEstado().equals("EN_DESCARGA")) {
+            return CambiarEstadoReservaResult.ESTADO_INVALIDO;
+        }
+        reserva.setEstado("FINALIZADA");
+        reservaDescargaRepository.save(reserva);
+        return CambiarEstadoReservaResult.OK;
+    }
+
+    public CambiarEstadoReservaResult cancelarReserva(Long id) {
+
+        ReservaDescargaEntity reserva = reservaDescargaRepository.findById(id).orElse(null);
+
+        if (reserva == null) {
+            return CambiarEstadoReservaResult.RESERVA_NOT_FOUND;
+        }
+
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        assert auth != null;
+        List<String> roles = auth.getAuthorities().stream().map(GrantedAuthority::getAuthority).toList();
+        UsuarioEntity usuario = usuarioRepository.findByUsername(auth.getName()).orElse(null);
+        assert usuario != null;
+        if (roles.contains("ROLE_TRANSPORTISTA")) {
+            if (!reserva.getCamion().getId().equals(usuario.getCamion().getId())) {
+                return  CambiarEstadoReservaResult.RESERVA_NOT_FOUND;
+            }
+            LocalDateTime inicio = LocalDateTime.of(reserva.getFecha(), reserva.getHoraInicio());
+            if (!inicio.isBefore(LocalDateTime.now().minusHours(3))) {
+                return CambiarEstadoReservaResult.FUERA_DE_VENTANA;
+            }
+        }
+
+        if (!reserva.getEstado().equals("SOLICITADA") && !reserva.getEstado().equals("CONFIRMADA")
+            && !reserva.getEstado().equals("CHECK_IN")) {
+            return CambiarEstadoReservaResult.ESTADO_INVALIDO;
+        }
+        reserva.setEstado("CANCELADA");
+        reservaDescargaRepository.save(reserva);
+        List<ReservaSlotEntity> reservas = reservaSlotRepository.findAllByReservaId(reserva.getId());
+        reservaSlotRepository.deleteAll(reservas);
+        return CambiarEstadoReservaResult.OK;
+    }
+
+    public CambiarEstadoReservaResult noShowReserva(Long id) {
+
+        ReservaDescargaEntity reserva = reservaDescargaRepository.findById(id).orElse(null);
+
+        if (reserva == null) {
+            return CambiarEstadoReservaResult.RESERVA_NOT_FOUND;
+        }
+        if (!reserva.getEstado().equals("CONFIRMADA")) {
+            return CambiarEstadoReservaResult.ESTADO_INVALIDO;
+        }
+        reserva.setEstado("NO_SHOW");
+        reservaDescargaRepository.save(reserva);
+        return CambiarEstadoReservaResult.OK;
     }
 
     private UpdateReservaResult validarUpdateReserva(ReservaDTO dto, ReservaDescargaEntity reserva) {

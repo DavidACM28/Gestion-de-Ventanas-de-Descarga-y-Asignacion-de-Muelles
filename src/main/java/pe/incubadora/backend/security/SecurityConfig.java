@@ -119,6 +119,16 @@ public class SecurityConfig {
                         "/api/v1/muelles/{id}",
                         "/api/v1/reservas/{id}"
                     ).hasRole("ADMIN")
+                    .requestMatchers(HttpMethod.PATCH,
+                        "/api/v1/reservas/{id}/confirmar",
+                        "/api/v1/reservas/{id}/check-in",
+                        "/api/v1/reservas/{id}/iniciar-descarga",
+                        "/api/v1/reservas/{id}/finalizar",
+                        "/api/v1/reservas/{id}/no-show"
+                    ).hasAnyRole("ADMIN", "OPERADOR")
+                    .requestMatchers(HttpMethod.PATCH,
+                        "/api/v1/reservas/{id}/cancelar"
+                    ).hasAnyRole("ADMIN", "OPERADOR", "TRANSPORTISTA")
                     .requestMatchers(HttpMethod.GET,
                         "/api/v1/empresas"
                     ).hasAnyRole("ADMIN", "OPERADOR")

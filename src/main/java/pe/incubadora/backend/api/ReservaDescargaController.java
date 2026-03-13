@@ -13,6 +13,7 @@ import pe.incubadora.backend.dtos.ErrorResponseDTO;
 import pe.incubadora.backend.dtos.ReservaDTO;
 import pe.incubadora.backend.entities.ReservaDescargaEntity;
 import pe.incubadora.backend.services.ReservaDescargaService;
+import pe.incubadora.backend.utils.CambiarEstadoReservaResult;
 import pe.incubadora.backend.utils.CreateReservaDescargaResult;
 import pe.incubadora.backend.utils.UpdateReservaResult;
 
@@ -155,6 +156,94 @@ public class ReservaDescargaController {
         }
         Page<ReservaDescargaEntity> reservas =
             reservaDescargaService.getReservasConFiltros(muelleId, camionId, empresaId, desde, hasta, estado, tipoCarga, page, size, sort);
-        return  ResponseEntity.status(HttpStatus.OK).body(reservas);
+        return ResponseEntity.status(HttpStatus.OK).body(reservas);
+    }
+
+    @PatchMapping("/reservas/{id}/confirmar")
+    public ResponseEntity<Object> confirmarReserva(@PathVariable Long id) {
+        CambiarEstadoReservaResult resultado = reservaDescargaService.confirmarReserva(id);
+        return switch (resultado) {
+            case RESERVA_NOT_FOUND -> ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+                new ErrorResponseDTO("RESERVA_NOT_FOUND", "No se encontró la reserva"));
+            case ESTADO_INVALIDO -> ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                new ErrorResponseDTO("VALIDATION_ERROR", "Estado inválido, " +
+                    "solo se pueden confirmar reservaciones con estado solicitada"));
+            case OK ->  ResponseEntity.status(HttpStatus.OK).body("Se confirmó la reserva");
+            default -> ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Error desconocido");
+        };
+    }
+
+    @PatchMapping("/reservas/{id}/check-in")
+    public ResponseEntity<Object> checkInReserva(@PathVariable Long id) {
+        CambiarEstadoReservaResult resultado = reservaDescargaService.checkInReserva(id);
+        return switch (resultado) {
+            case RESERVA_NOT_FOUND -> ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+                new ErrorResponseDTO("RESERVA_NOT_FOUND", "No se encontró la reserva"));
+            case ESTADO_INVALIDO -> ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                new ErrorResponseDTO("VALIDATION_ERROR", "Estado inválido, " +
+                    "solo se puede hacer check in a reservaciones con estado confirmada"));
+            case FUERA_DE_VENTANA ->  ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                new ErrorResponseDTO("VALIDATION_ERROR", "Solo se puede hacer chek in desde 30 minutos " +
+                    "antes de la hora de reserva y hasta 20 minutos después de la hora de reserva"));
+            case OK ->  ResponseEntity.status(HttpStatus.OK).body("Se hizó chek in a la reserva");
+        };
+    }
+
+    @PatchMapping("/reservas/{id}/iniciar-descarga")
+    public ResponseEntity<Object> iniciarDescargaReserva(@PathVariable Long id) {
+        CambiarEstadoReservaResult resultado = reservaDescargaService.iniciarReserva(id);
+        return switch (resultado) {
+            case RESERVA_NOT_FOUND -> ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+                new ErrorResponseDTO("RESERVA_NOT_FOUND", "No se encontró la reserva"));
+            case ESTADO_INVALIDO -> ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                new ErrorResponseDTO("VALIDATION_ERROR", "Estado inválido, " +
+                    "solo se pueden empezar a descargar reservaciones con estado chek in"));
+            case OK ->  ResponseEntity.status(HttpStatus.OK).body("Se inició la descarga");
+            default -> ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Error desconocido");
+        };
+    }
+
+    @PatchMapping("/reservas/{id}/finalizar")
+    public ResponseEntity<Object> finalizarReserva(@PathVariable Long id) {
+        CambiarEstadoReservaResult resultado = reservaDescargaService.finalizarReserva(id);
+        return switch (resultado) {
+            case RESERVA_NOT_FOUND -> ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+                new ErrorResponseDTO("RESERVA_NOT_FOUND", "No se encontró la reserva"));
+            case ESTADO_INVALIDO -> ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                new ErrorResponseDTO("VALIDATION_ERROR", "Estado inválido, " +
+                    "solo se pueden finalizar reservaciones con estado en descarga"));
+            case OK ->  ResponseEntity.status(HttpStatus.OK).body("Se finalizó la reserva");
+            default -> ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Error desconocido");
+        };
+    }
+
+    @PatchMapping("/reservas/{id}/cancelar")
+    public ResponseEntity<Object> cancelarReserva(@PathVariable Long id) {
+        CambiarEstadoReservaResult resultado = reservaDescargaService.cancelarReserva(id);
+        return switch (resultado) {
+            case RESERVA_NOT_FOUND -> ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+                new ErrorResponseDTO("RESERVA_NOT_FOUND", "No se encontró la reserva"));
+            case ESTADO_INVALIDO -> ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                new ErrorResponseDTO("VALIDATION_ERROR", "Estado inválido, " +
+                    "solo se puede cancelar reservaciones con estado solicitada, confirmada o check in"));
+            case FUERA_DE_VENTANA ->  ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                new ErrorResponseDTO("VALIDATION_ERROR", "Solo se puede cancelar una reserva con 3 " +
+                    "horas de anticipación"));
+            case OK ->  ResponseEntity.status(HttpStatus.OK).body("Se hizó chek in a la reserva");
+        };
+    }
+
+    @PatchMapping("/reservas/{id}/no-show")
+    public ResponseEntity<Object> noShowReserva(@PathVariable Long id) {
+        CambiarEstadoReservaResult resultado = reservaDescargaService.noShowReserva(id);
+        return switch (resultado) {
+            case RESERVA_NOT_FOUND -> ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+                new ErrorResponseDTO("RESERVA_NOT_FOUND", "No se encontró la reserva"));
+            case ESTADO_INVALIDO -> ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                new ErrorResponseDTO("VALIDATION_ERROR", "Estado inválido, " +
+                    "solo se puede marcar como no show reservaciones con estado confirmada"));
+            case OK ->  ResponseEntity.status(HttpStatus.OK).body("Se marcó como no show");
+            default -> ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Error desconocido");
+        };
     }
 }
