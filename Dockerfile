@@ -6,14 +6,15 @@ RUN apt-get update && apt-get install -y \
     wget \
     unzip \
     curl \
-    openjdk-17-jdk # Instalar JDK 17 como fallback en caso de problemas con Java 25
+    tar \
+    openjdk-17-jdk  # Java 17 como fallback en caso de problemas con Java 25
 
-# Descargar e instalar Java 25 (usando el enlace de acceso anticipado de OpenJDK)
+# Descargar Java 25 desde OpenJDK
 RUN wget https://download.java.net/java/early_access/loom/25/binaries/jdk-25-ea+28_linux-x64_bin.tar.gz \
     && tar -xzf jdk-25-ea+28_linux-x64_bin.tar.gz \
     && mv jdk-25-ea+28 /opt/jdk-25
 
-# Configurar las variables de entorno para usar Java 25
+# Configuración de variables de entorno
 ENV JAVA_HOME=/opt/jdk-25
 ENV PATH="$JAVA_HOME/bin:$PATH"
 
@@ -26,7 +27,7 @@ RUN ./mvnw clean package -DskipTests
 # Etapa de ejecución
 FROM ubuntu:22.04
 
-# Instalar dependencias de Java para la ejecución
+# Instalar dependencias de Java para ejecutar
 RUN apt-get update && apt-get install -y \
     libglib2.0-0 \
     libxext6 \
@@ -37,11 +38,16 @@ RUN apt-get update && apt-get install -y \
 # Copiar el JDK de la etapa anterior
 COPY --from=builder /opt/jdk-25 /opt/jdk-25
 
-# Configurar las variables de entorno para usar Java 25
+# Configurar el entorno
 ENV JAVA_HOME=/opt/jdk-25
 ENV PATH="$JAVA_HOME/bin:$PATH"
 
+# Copiar el archivo JAR de la aplicación
 WORKDIR /app
 COPY --from=builder /app/target/*.jar app.jar
+
+# Exponer el puerto
 EXPOSE 8080
+
+# Iniciar la aplicación
 ENTRYPOINT ["java", "-jar", "app.jar"]
