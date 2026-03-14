@@ -111,6 +111,9 @@ public class SecurityConfig {
                         "/api/v1/muelles"
                     ).hasRole("ADMIN")
                     .requestMatchers(HttpMethod.POST,
+                        "/api/v1/cierres"
+                    ).hasAnyRole("ADMIN", "OPERADOR")
+                    .requestMatchers(HttpMethod.POST,
                         "/api/v1/reservas"
                     ).hasAnyRole("ADMIN", "OPERADOR", "TRANSPORTISTA")
                     .requestMatchers(HttpMethod.PUT,
