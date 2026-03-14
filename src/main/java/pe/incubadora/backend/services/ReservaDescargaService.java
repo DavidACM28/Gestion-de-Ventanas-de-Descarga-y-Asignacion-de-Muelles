@@ -208,31 +208,31 @@ public class ReservaDescargaService {
         UsuarioEntity usuario = usuarioRepository.findByUsername(auth.getName()).orElse(null);
         assert usuario != null;
 
-        Specification<ReservaDescargaEntity> spec = Specification.where((_, _, cb) -> cb.conjunction());
+        Specification<ReservaDescargaEntity> spec = Specification.where((root, query, cb) -> cb.conjunction());
 
         if (roles.contains("ROLE_TRANSPORTISTA")) {
-            spec = spec.and((root, _, cb) -> cb.equal(root.get("camion").get("id"), usuario.getCamion().getId()));
+            spec = spec.and((root, query, cb) -> cb.equal(root.get("camion").get("id"), usuario.getCamion().getId()));
         }
         if (muelleId != null) {
-            spec = spec.and((root, _, cb) -> cb.equal(root.get("muelle").get("id"), muelleId));
+            spec = spec.and((root, query, cb) -> cb.equal(root.get("muelle").get("id"), muelleId));
         }
         if (camionId != null) {
-            spec = spec.and((root, _, cb) -> cb.equal(root.get("camion").get("id"), camionId));
+            spec = spec.and((root, query, cb) -> cb.equal(root.get("camion").get("id"), camionId));
         }
         if (empresaId != null) {
-            spec = spec.and((root, _, cb) -> cb.equal(root.get("camion").get("empresa").get("id"), empresaId));
+            spec = spec.and((root, query, cb) -> cb.equal(root.get("camion").get("empresa").get("id"), empresaId));
         }
         if (fechaDesde != null) {
-            spec = spec.and((root, _, cb) -> cb.greaterThanOrEqualTo(root.get("fecha"), fechaDesde));
+            spec = spec.and((root, query, cb) -> cb.greaterThanOrEqualTo(root.get("fecha"), fechaDesde));
         }
         if (fechaHasta != null) {
-            spec = spec.and((root, _, cb) -> cb.lessThanOrEqualTo(root.get("fecha"), fechaHasta));
+            spec = spec.and((root, query, cb) -> cb.lessThanOrEqualTo(root.get("fecha"), fechaHasta));
         }
         if (estado != null) {
-            spec = spec.and((root, _, cb) -> cb.equal(root.get("estado"), estado.toUpperCase()));
+            spec = spec.and((root, query, cb) -> cb.equal(root.get("estado"), estado.toUpperCase()));
         }
         if (tipoCarga != null) {
-            spec = spec.and((root, _, cb) -> cb.equal(root.get("muelle").get("tipoCargaPermitida"), tipoCarga.toUpperCase()));
+            spec = spec.and((root, query, cb) -> cb.equal(root.get("muelle").get("tipoCargaPermitida"), tipoCarga.toUpperCase()));
         }
 
         Sort.Direction direction = "descending".equalsIgnoreCase(sort) ? Sort.Direction.DESC : Sort.Direction.ASC;
@@ -323,7 +323,7 @@ public class ReservaDescargaService {
                 return  CambiarEstadoReservaResult.RESERVA_NOT_FOUND;
             }
             LocalDateTime inicio = LocalDateTime.of(reserva.getFecha(), reserva.getHoraInicio());
-            if (!inicio.isBefore(LocalDateTime.now().minusHours(3))) {
+            if (inicio.isBefore(LocalDateTime.now().minusHours(3))) {
                 return CambiarEstadoReservaResult.FUERA_DE_VENTANA;
             }
         }

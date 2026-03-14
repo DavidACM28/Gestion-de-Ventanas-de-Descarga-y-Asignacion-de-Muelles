@@ -229,7 +229,7 @@ public class ReservaDescargaController {
             case FUERA_DE_VENTANA ->  ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
                 new ErrorResponseDTO("VALIDATION_ERROR", "Solo se puede cancelar una reserva con 3 " +
                     "horas de anticipación"));
-            case OK ->  ResponseEntity.status(HttpStatus.OK).body("Se hizó chek in a la reserva");
+            case OK ->  ResponseEntity.status(HttpStatus.OK).body("Se canceló a la reserva");
         };
     }
 
