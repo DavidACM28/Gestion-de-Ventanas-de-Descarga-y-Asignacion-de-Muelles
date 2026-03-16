@@ -2,15 +2,22 @@ package pe.incubadora.backend.api;
 
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import pe.incubadora.backend.dtos.CierreOperativoDTO;
 import pe.incubadora.backend.dtos.ErrorResponseDTO;
+import pe.incubadora.backend.entities.CierreOperativoEntity;
 import pe.incubadora.backend.services.CierreOperativoService;
 import pe.incubadora.backend.utils.CreateCierreOperativoResult;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -19,6 +26,30 @@ import java.util.Map;
 public class CierreOperativoControler {
     @Autowired
     private CierreOperativoService cierreOperativoService;
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<Object> handleTypeMismatchException() {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+            new ErrorResponseDTO("VALIDATION_ERROR", "Asegúrese de que los filtros se envíen con el formato correcto"));
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Object> handleIllegalArgumentException() {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+            new ErrorResponseDTO("VALIDATION_ERROR", "Asegúrese de que los filtros se envíen con el formato correcto"));
+    }
+
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<Object> handleMissingServletRequestParameterException() {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+            new ErrorResponseDTO("VALIDATION_ERROR", "Los parámetros: size, page, y sort, son obligatorios"));
+    }
+
+    @ExceptionHandler(DateTimeParseException.class)
+    public ResponseEntity<Object> handleDateTimeParseException() {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+            new ErrorResponseDTO("VALIDATION_ERROR", "Fecha invalida. Use formato yyyy-MM-dd"));
+    }
 
     @PostMapping("/cierres")
     public ResponseEntity<Object> crearCierre(@Valid @RequestBody CierreOperativoDTO cierreOperativoDTO, BindingResult result) {
@@ -48,6 +79,24 @@ public class CierreOperativoControler {
                 new ErrorResponseDTO("RESERVA_CONFLICT", "Hay una reserva en este rango de hora"));
             case CREATED -> ResponseEntity.status(HttpStatus.CREATED).body("Se creó el cierre operativo");
         };
+    }
+
+    @GetMapping("/cierres")
+    public ResponseEntity<Object> getCierreOperativos(
+        @RequestParam(required = false) Long muelleId, @RequestParam(required = false) String fechaDesde,
+        @RequestParam(required = false) String fechaHasta, @RequestParam(required = false) String tipo,
+        @RequestParam int page,  @RequestParam int size, @RequestParam String sort) {
+
+        LocalDate desde = fechaDesde != null ? LocalDate.parse(fechaDesde, DateTimeFormatter.ISO_DATE) : null;
+        LocalDate hasta = fechaHasta != null ? LocalDate.parse(fechaHasta, DateTimeFormatter.ISO_DATE) : null;
+        if (desde != null && hasta != null && !desde.isBefore(hasta) && !desde.isEqual(hasta)) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                new ErrorResponseDTO("VALIDATION_ERROR", "La fecha límite de búsqueda no puede ser anterior a la fecha de inicio de búsqueda"));
+        }
+
+        Page<CierreOperativoEntity> reservas =
+            cierreOperativoService.getCierresConFiltros(muelleId, desde, hasta, tipo, page, size, sort);
+        return ResponseEntity.status(HttpStatus.OK).body(reservas);
     }
 
     @DeleteMapping("/cierres/{id}")

@@ -1,7 +1,13 @@
 package pe.incubadora.backend.services;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -9,6 +15,7 @@ import pe.incubadora.backend.dtos.CierreOperativoDTO;
 import pe.incubadora.backend.entities.CierreOperativoEntity;
 import pe.incubadora.backend.entities.MuelleEntity;
 import pe.incubadora.backend.entities.ReservaDescargaEntity;
+import pe.incubadora.backend.entities.UsuarioEntity;
 import pe.incubadora.backend.repositories.CierreOperativoRepository;
 import pe.incubadora.backend.repositories.MuelleRepository;
 import pe.incubadora.backend.repositories.ReservaDescargaRepository;
@@ -144,6 +151,30 @@ public class CierreOperativoService {
         }
         cierreOperativoRepository.delete(cierre);
         return true;
+    }
+
+    public Page<CierreOperativoEntity> getCierresConFiltros(
+        Long muelleId,LocalDate fechaDesde, LocalDate fechaHasta,
+        String tipo, int page, int size, String sort) {
+
+        Specification<CierreOperativoEntity> spec = Specification.where((root, query, cb) -> cb.conjunction());
+
+        if (muelleId != null) {
+            spec = spec.and((root, query, cb) -> cb.equal(root.get("muelle").get("id"), muelleId));
+        }
+        if (fechaDesde != null) {
+            spec = spec.and((root, query, cb) -> cb.greaterThanOrEqualTo(root.get("fecha"), fechaDesde));
+        }
+        if (fechaHasta != null) {
+            spec = spec.and((root, query, cb) -> cb.lessThanOrEqualTo(root.get("fecha"), fechaHasta));
+        }
+        if (tipo != null) {
+            spec = spec.and((root, query, cb) -> cb.equal(root.get("tipo"), tipo.toUpperCase()));
+        }
+
+        Sort.Direction direction = "descending".equalsIgnoreCase(sort) ? Sort.Direction.DESC : Sort.Direction.ASC;
+        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, "id"));
+        return cierreOperativoRepository.findAll(spec, pageable);
     }
 
 }
