@@ -1,6 +1,11 @@
 package pe.incubadora.backend.services;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -68,5 +73,37 @@ public class ColaEsperaService {
         colaEsperaEntity.setObservacion(colaEspera.getObservacion());
         colaEsperaRepository.save(colaEsperaEntity);
         return CreateColaEsperaResult.CREATED;
+    }
+
+    public Page<ColaEsperaEntity> getColasConFiltros(
+        LocalDate fecha, String tipoCarga, String estado, Integer prioridad, int page, int size, String sort) {
+
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        assert auth != null;
+        List<String> roles = auth.getAuthorities().stream().map(GrantedAuthority::getAuthority).toList();
+        UsuarioEntity usuario = usuarioRepository.findByUsername(auth.getName()).orElse(null);
+        assert usuario != null;
+
+        Specification<ColaEsperaEntity> spec = Specification.where((root, query, cb) -> cb.conjunction());
+
+        if (roles.contains("ROLE_TRANSPORTISTA")) {
+            spec = spec.and((root, query, cb) -> cb.equal(root.get("camion").get("id"), usuario.getCamion().getId()));
+        }
+        if (fecha != null) {
+            spec = spec.and((root, query, cb) -> cb.equal(root.get("fecha"), fecha));
+        }
+        if (tipoCarga != null) {
+            spec = spec.and((root, query, cb) -> cb.equal(root.get("tipoCarga"), tipoCarga));
+        }
+        if (estado != null) {
+            spec = spec.and((root, query, cb) -> cb.lessThanOrEqualTo(root.get("estado"), estado));
+        }
+        if (prioridad != null) {
+            spec = spec.and((root, query, cb) -> cb.equal(root.get("prioridad"), prioridad));
+        }
+
+        Sort.Direction direction = "descending".equalsIgnoreCase(sort) ? Sort.Direction.DESC : Sort.Direction.ASC;
+        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, "id"));
+        return colaEsperaRepository.findAll(spec, pageable);
     }
 }

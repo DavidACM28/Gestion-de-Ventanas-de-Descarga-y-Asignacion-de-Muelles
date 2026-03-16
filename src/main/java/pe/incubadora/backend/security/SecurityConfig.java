@@ -146,7 +146,8 @@ public class SecurityConfig {
                         "/api/v1/muelles/{id}",
                         "/api/v1/reservas",
                         "/api/v1/reservas/{id}",
-                        "/api/v1/cierres"
+                        "/api/v1/cierres",
+                        "/api/v1/cola-espera"
                     ).hasAnyRole("ADMIN", "OPERADOR", "TRANSPORTISTA")
                     .requestMatchers(
                         "/api/v1/auth/login",

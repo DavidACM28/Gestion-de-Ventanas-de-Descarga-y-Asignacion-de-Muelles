@@ -2,18 +2,20 @@ package pe.incubadora.backend.api;
 
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import pe.incubadora.backend.dtos.ColaEsperaDTO;
 import pe.incubadora.backend.dtos.ErrorResponseDTO;
+import pe.incubadora.backend.entities.CierreOperativoEntity;
+import pe.incubadora.backend.entities.ColaEsperaEntity;
 import pe.incubadora.backend.services.ColaEsperaService;
 import pe.incubadora.backend.utils.CreateColaEsperaResult;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -49,6 +51,16 @@ public class ColaEsperaController {
                 new ErrorResponseDTO("COLA_LLENA_CONFLICT", "La cola de espera está llena"));
             case CREATED ->  ResponseEntity.status(HttpStatus.CREATED).body("Se añadió a la cola de espera correctamente");
         };
+    }
+    @GetMapping("/cola-espera")
+    public ResponseEntity<Object> getColaEspera(
+        @RequestParam(required = false) LocalDate fecha, @RequestParam(required = false) String tipoCarga,
+        @RequestParam(required = false) String estado, @RequestParam(required = false) Integer prioridad,
+        @RequestParam int page,  @RequestParam int size, @RequestParam String sort) {
+
+        Page<ColaEsperaEntity> colas =
+            colaEsperaService.getColasConFiltros(fecha, tipoCarga, estado, prioridad, page, size, sort);
+        return ResponseEntity.status(HttpStatus.OK).body(colas);
     }
 
 }
