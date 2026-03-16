@@ -136,4 +136,14 @@ public class CierreOperativoService {
         return CreateCierreOperativoResult.CREATED;
     }
 
+    public boolean deleteCierreOperativo(Long id) {
+
+        CierreOperativoEntity cierre = cierreOperativoRepository.findById(id).orElse(null);
+        if (cierre == null) {
+            return false;
+        }
+        cierreOperativoRepository.delete(cierre);
+        return true;
+    }
+
 }

@@ -5,10 +5,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import pe.incubadora.backend.dtos.CierreOperativoDTO;
 import pe.incubadora.backend.dtos.ErrorResponseDTO;
 import pe.incubadora.backend.services.CierreOperativoService;
@@ -49,8 +46,17 @@ public class CierreOperativoControler {
                 new ErrorResponseDTO("BUSINESS_RULE_VIOLATION", "Hay una reserva en descarga en este rango de hora"));
             case RESERVA_CONFLICT -> ResponseEntity.status(HttpStatus.CONFLICT).body(
                 new ErrorResponseDTO("RESERVA_CONFLICT", "Hay una reserva en este rango de hora"));
-            case CREATED ->  ResponseEntity.status(HttpStatus.CREATED).body("Se creó el cierre operativo");
+            case CREATED -> ResponseEntity.status(HttpStatus.CREATED).body("Se creó el cierre operativo");
         };
-
     }
+
+    @DeleteMapping("/cierres/{id}")
+    public ResponseEntity<Object> eliminarCierreOperativo(@PathVariable Long id) {
+        if (cierreOperativoService.deleteCierreOperativo(id)) {
+            return ResponseEntity.ok().body("Se elimino el cierre operativo");
+        }
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+            new ErrorResponseDTO("CIERRE_NOT_FOUND", "No se encontró el cierre operativo"));
+    }
+
 }

@@ -122,6 +122,9 @@ public class SecurityConfig {
                         "/api/v1/muelles/{id}",
                         "/api/v1/reservas/{id}"
                     ).hasRole("ADMIN")
+                    .requestMatchers(HttpMethod.DELETE,
+                        "/api/v1/cierres/{id}"
+                    ).hasAnyRole("ADMIN", "OPERADOR")
                     .requestMatchers(HttpMethod.PATCH,
                         "/api/v1/reservas/{id}/confirmar",
                         "/api/v1/reservas/{id}/check-in",
