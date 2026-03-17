@@ -10,6 +10,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import pe.incubadora.backend.dtos.ColaEsperaDTO;
 import pe.incubadora.backend.entities.CamionEntity;
 import pe.incubadora.backend.entities.ColaEsperaEntity;
@@ -17,6 +18,7 @@ import pe.incubadora.backend.entities.UsuarioEntity;
 import pe.incubadora.backend.repositories.CamionRepository;
 import pe.incubadora.backend.repositories.ColaEsperaRepository;
 import pe.incubadora.backend.repositories.UsuarioRepository;
+import pe.incubadora.backend.utils.CancelarColaEsperaResult;
 import pe.incubadora.backend.utils.CreateColaEsperaResult;
 
 import java.time.LocalDate;
@@ -105,5 +107,27 @@ public class ColaEsperaService {
         Sort.Direction direction = "descending".equalsIgnoreCase(sort) ? Sort.Direction.DESC : Sort.Direction.ASC;
         Pageable pageable = PageRequest.of(page, size, Sort.by(direction, "id"));
         return colaEsperaRepository.findAll(spec, pageable);
+    }
+
+    @Transactional
+    public CancelarColaEsperaResult cancelarColaEspera(Long id) {
+        ColaEsperaEntity colaEsperaEntity = colaEsperaRepository.findById(id).orElse(null);
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        assert auth != null;
+        List<String> roles = auth.getAuthorities().stream().map(GrantedAuthority::getAuthority).toList();
+        UsuarioEntity usuario = usuarioRepository.findByUsername(auth.getName()).orElse(null);
+        assert usuario != null;
+        if (colaEsperaEntity == null) {
+            return CancelarColaEsperaResult.COLA_NOT_FOUND;
+        }
+        if (!colaEsperaEntity.getEstado().equalsIgnoreCase("ACTIVA")) {
+            return CancelarColaEsperaResult.ESTADO_INVALIDO;
+        }
+        if (roles.contains("ROLE_TRANSPORTISTA") && !usuario.getCamion().equals(colaEsperaEntity.getCamion())) {
+            return CancelarColaEsperaResult.COLA_NOT_FOUND;
+        }
+        colaEsperaEntity.setEstado("CANCELADA");
+        colaEsperaRepository.save(colaEsperaEntity);
+        return CancelarColaEsperaResult.CANCELED;
     }
 }

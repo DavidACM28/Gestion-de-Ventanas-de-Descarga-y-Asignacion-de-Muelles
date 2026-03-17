@@ -134,7 +134,8 @@ public class SecurityConfig {
                         "/api/v1/reservas/{id}/no-show"
                     ).hasAnyRole("ADMIN", "OPERADOR")
                     .requestMatchers(HttpMethod.PATCH,
-                        "/api/v1/reservas/{id}/cancelar"
+                        "/api/v1/reservas/{id}/cancelar",
+                        "/api/v1/cola-espera/{id}/cancelar"
                     ).hasAnyRole("ADMIN", "OPERADOR", "TRANSPORTISTA")
                     .requestMatchers(HttpMethod.GET,
                         "/api/v1/empresas"
