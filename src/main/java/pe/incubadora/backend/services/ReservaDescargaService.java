@@ -367,7 +367,8 @@ public class ReservaDescargaService {
             camion = camionRepository.findById(dto.getCamionId()).orElse(null);
             if (camion == null) return UpdateReservaResult.CAMION_NOT_FOUND;
         }
-        if (!muelle.getTipoCargaPermitida().equals(camion.getTipoCarga())) {
+        if (!muelle.getTipoCargaPermitida().equals(camion.getTipoCarga())
+            && !muelle.getTipoCargaPermitida().equals("MIXTA")) {
             return UpdateReservaResult.NO_COINCIDEN;
         }
 

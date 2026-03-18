@@ -18,7 +18,8 @@ public class MuelleService {
     @Transactional
     public boolean crearMuelle(MuelleDTO muelle) {
         if (!muelle.getTipoCargaPermitida().equalsIgnoreCase("seca") &&
-            !muelle.getTipoCargaPermitida().equalsIgnoreCase("refrigerada")) {
+            !muelle.getTipoCargaPermitida().equalsIgnoreCase("refrigerada") &&
+            !muelle.getTipoCargaPermitida().equalsIgnoreCase("mixta")) {
             return false;
         }
         MuelleEntity muelleEntity = new MuelleEntity();
@@ -60,7 +61,8 @@ public class MuelleService {
         }
         if (muelle.getTipoCargaPermitida() != null) {
             if (!muelle.getTipoCargaPermitida().equalsIgnoreCase("seca") &&
-                !muelle.getTipoCargaPermitida().equalsIgnoreCase("refrigerada")) {
+                !muelle.getTipoCargaPermitida().equalsIgnoreCase("refrigerada") &&
+                !muelle.getTipoCargaPermitida().equalsIgnoreCase("mixta")) {
                 return UpdateMuelleResult.TIPO_CARGA_INVALIDA;
             }
         }
