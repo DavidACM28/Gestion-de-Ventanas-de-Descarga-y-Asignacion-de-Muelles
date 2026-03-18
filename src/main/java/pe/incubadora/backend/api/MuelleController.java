@@ -37,7 +37,7 @@ public class MuelleController {
                 return ResponseEntity.status(HttpStatus.CREATED).body("Muelle registrado exitosamente");
             }
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
-                new ErrorResponseDTO("VALIDATION_ERROR", "Tipo de carga inválida, use: SECA | REFRIGERADA"));
+                new ErrorResponseDTO("VALIDATION_ERROR", "Tipo de carga inválida, use: SECA | REFRIGERADA | MIXTA"));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
                 new ErrorResponseDTO("VALIDATION_ERROR", "Ya hay un muelle registrado con este código"));
@@ -54,7 +54,7 @@ public class MuelleController {
                 case NOMBRE_INVALIDO -> ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
                     new ErrorResponseDTO("VALIDATION_ERROR", "Nombre inválido, el nombre debe tener por lo menos 3 caracteres"));
                 case TIPO_CARGA_INVALIDA -> ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
-                    new ErrorResponseDTO("VALIDATION_ERROR", "Tipo de carga inválida, use: SECA | REFRIGERADA"));
+                    new ErrorResponseDTO("VALIDATION_ERROR", "Tipo de carga inválida, use: SECA | REFRIGERADA | MIXTA"));
                 case CAPACIDAD_INVALIDA -> ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
                     new ErrorResponseDTO("VALIDATION_ERROR", "Capacidad inválida, la capacidad debe ser mayor a 0"));
                 case UPDATED -> ResponseEntity.status(HttpStatus.OK).body("El muelle se actualizó con éxito");
