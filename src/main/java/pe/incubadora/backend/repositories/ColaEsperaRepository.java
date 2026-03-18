@@ -6,6 +6,7 @@ import org.springframework.stereotype.Repository;
 import pe.incubadora.backend.entities.ColaEsperaEntity;
 
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 
 @Repository
@@ -13,5 +14,13 @@ public interface ColaEsperaRepository extends JpaRepository<ColaEsperaEntity, Lo
 
     boolean existsByCamionIdAndFechaAndEstado(Long camionId, LocalDate fecha, String estado);
 
+    boolean existsByCamionIdAndEstado(Long camionId, String estado);
+
     List<ColaEsperaEntity> findByFechaAndTipoCargaAndEstado(LocalDate fecha, String tipoCarga, String estado);
+
+    List<ColaEsperaEntity> findByFechaAndTipoCargaAndEstadoOrderByPrioridadAscIdAsc(
+        LocalDate fecha, String tipoCarga, String estado);
+
+    List<ColaEsperaEntity> findByFechaAndEstadoAndTipoCargaInOrderByPrioridadAscIdAsc(
+        LocalDate fecha, String estado, Collection<String> tipoCarga);
 }

@@ -9,12 +9,15 @@ import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 import pe.incubadora.backend.dtos.ColaEsperaDTO;
 import pe.incubadora.backend.dtos.ErrorResponseDTO;
+import pe.incubadora.backend.dtos.PromoverColaEsperaDTO;
 import pe.incubadora.backend.entities.ColaEsperaEntity;
 import pe.incubadora.backend.services.ColaEsperaService;
 import pe.incubadora.backend.utils.CancelarColaEsperaResult;
 import pe.incubadora.backend.utils.CreateColaEsperaResult;
+import pe.incubadora.backend.utils.PromoverColaEsperaResult;
 
 import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -54,7 +57,7 @@ public class ColaEsperaController {
     }
 
     @PatchMapping("/cola-espera/{id}/cancelar")
-    public ResponseEntity<Object> cancelarColaEspera(Long id) {
+    public ResponseEntity<Object> cancelarColaEspera(@PathVariable Long id) {
         CancelarColaEsperaResult resultado = colaEsperaService.cancelarColaEspera(id);
         return switch (resultado) {
             case COLA_NOT_FOUND -> ResponseEntity.status(HttpStatus.NOT_FOUND).body(
@@ -63,6 +66,57 @@ public class ColaEsperaController {
                 new ErrorResponseDTO("VALIDATION_ERROR", "Solo se pueden cancelar las colas de espera con estado ACTIVA"));
             case CANCELED -> ResponseEntity.status(HttpStatus.OK).body("Se canceló la cola de espera");
         };
+    }
+
+    @PostMapping("/cola-espera/promover")
+    public ResponseEntity<Object> promoverColaEspera(
+        @Valid @RequestBody PromoverColaEsperaDTO dto, BindingResult result) {
+
+        if (result.hasErrors()) {
+            Map<String, String> errores = new HashMap<>();
+            result.getFieldErrors().forEach(error -> errores.put(error.getField(), error.getDefaultMessage()));
+            Map<String, Object> response = new HashMap<>();
+            response.put("code", "VALIDATION_ERROR");
+            response.put("errors", errores);
+            return ResponseEntity.badRequest().body(response);
+        }
+
+        try {
+            PromoverColaEsperaResult resultado = colaEsperaService.promoverColaEspera(dto);
+            return switch (resultado) {
+                case FECHA_INVALIDA -> ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                    new ErrorResponseDTO("VALIDATION_ERROR", "Fecha invalida. Use formato yyyy-MM-dd"));
+                case MUELLE_NOT_FOUND -> ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+                    new ErrorResponseDTO("MUELLE_NOT_FOUND", "No se encontró el muelle"));
+                case SIN_CANDIDATOS -> ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+                    new ErrorResponseDTO("COLA_NOT_FOUND", "No hay camiones en espera para promover"));
+                case TIPO_CARGA_INVALIDA -> ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT).body(
+                    new ErrorResponseDTO("MUELLE_INCOMPATIBLE", "El tipo de carga no es compatible con el muelle"));
+                case PESO_EXCEDE_MUELLE -> ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT).body(
+                    new ErrorResponseDTO("MUELLE_INCOMPATIBLE", "El peso estimado excede la capacidad del muelle"));
+                case HORA_INVALIDA -> ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                    new ErrorResponseDTO("VALIDATION_ERROR", "Hora invalida. Use formato HH:mm"));
+                case FECHA_PASADA -> ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                    new ErrorResponseDTO("VALIDATION_ERROR", "La fecha de la reserva no puede ser anterior a la actual"));
+                case DURACION_INVALIDA -> ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                    new ErrorResponseDTO("VALIDATION_ERROR", "La duración debe ser 30, 60, 90 o 120 minutos"));
+                case CIERRE_CONFLICT -> ResponseEntity.status(HttpStatus.CONFLICT).body(
+                    new ErrorResponseDTO("CIERRE_CONFLICT", "Hay un cierre operativo que impide promover la reserva"));
+                case CAMION_NOT_FOUND -> ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT).body(
+                    new ErrorResponseDTO("CAMION_NOT_FOUND", "No se encontró el camión"));
+                case PROMOTED ->
+                    ResponseEntity.status(HttpStatus.CREATED).body("Se promovió la cola de espera correctamente");
+            };
+        } catch (DateTimeParseException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                new ErrorResponseDTO("VALIDATION_ERROR", "Fecha invalida. Use formato yyyy-MM-dd"));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(
+                new ErrorResponseDTO(
+                    "RESERVA_CONFLICT",
+                    "Hay una reserva existente en ese rango horario que impide promover la reserva"
+                ));
+        }
     }
 
     @GetMapping("/cola-espera")
@@ -75,5 +129,4 @@ public class ColaEsperaController {
             colaEsperaService.getColasConFiltros(fecha, tipoCarga, estado, prioridad, page, size, sort);
         return ResponseEntity.status(HttpStatus.OK).body(colas);
     }
-
 }

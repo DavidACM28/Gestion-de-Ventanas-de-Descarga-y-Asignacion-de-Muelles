@@ -66,7 +66,8 @@ public class ReservaDescargaService {
                 return CreateReservaDescargaResult.CAMION_NOT_FOUND;
             }
         }
-        if (!muelleEntity.getTipoCargaPermitida().equals(camionEntity.getTipoCarga())) {
+        if (!muelleEntity.getTipoCargaPermitida().equals(camionEntity.getTipoCarga()) &&
+            !muelleEntity.getTipoCargaPermitida().equals("MIXTA")) {
             return CreateReservaDescargaResult.TIPO_CARGA_INVALIDA;
         }
         if (reservaDTO.getPesoEstimadoToneladas().compareTo(muelleEntity.getCapacidadToneladas()) > 0) {
@@ -320,7 +321,7 @@ public class ReservaDescargaService {
         assert usuario != null;
         if (roles.contains("ROLE_TRANSPORTISTA")) {
             if (!reserva.getCamion().getId().equals(usuario.getCamion().getId())) {
-                return  CambiarEstadoReservaResult.RESERVA_NOT_FOUND;
+                return CambiarEstadoReservaResult.RESERVA_NOT_FOUND;
             }
             LocalDateTime inicio = LocalDateTime.of(reserva.getFecha(), reserva.getHoraInicio());
             if (inicio.isBefore(LocalDateTime.now().minusHours(3))) {

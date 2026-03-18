@@ -12,17 +12,21 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pe.incubadora.backend.dtos.ColaEsperaDTO;
+import pe.incubadora.backend.dtos.PromoverColaEsperaDTO;
+import pe.incubadora.backend.dtos.ReservaDTO;
 import pe.incubadora.backend.entities.CamionEntity;
 import pe.incubadora.backend.entities.ColaEsperaEntity;
+import pe.incubadora.backend.entities.MuelleEntity;
 import pe.incubadora.backend.entities.UsuarioEntity;
-import pe.incubadora.backend.repositories.CamionRepository;
-import pe.incubadora.backend.repositories.ColaEsperaRepository;
-import pe.incubadora.backend.repositories.UsuarioRepository;
+import pe.incubadora.backend.repositories.*;
 import pe.incubadora.backend.utils.CancelarColaEsperaResult;
 import pe.incubadora.backend.utils.CreateColaEsperaResult;
+import pe.incubadora.backend.utils.CreateReservaDescargaResult;
+import pe.incubadora.backend.utils.PromoverColaEsperaResult;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -33,6 +37,14 @@ public class ColaEsperaService {
     private CamionRepository camionRepository;
     @Autowired
     private UsuarioRepository usuarioRepository;
+    @Autowired
+    private MuelleRepository muelleRepository;
+    @Autowired
+    private CierreOperativoRepository cierreOperativoRepository;
+    @Autowired
+    private ReservaDescargaService reservaDescargaService;
+
+    private final List<Integer> duracionesValidas = List.of(30, 60, 90, 120);
 
     public CreateColaEsperaResult createColaEspera(ColaEsperaDTO colaEspera) {
         CamionEntity camionEntity = camionRepository.findById(colaEspera.getCamionId()).orElse(null);
@@ -128,6 +140,93 @@ public class ColaEsperaService {
         }
         colaEsperaEntity.setEstado("CANCELADA");
         colaEsperaRepository.save(colaEsperaEntity);
+        reordenarPrioridades(colaEsperaEntity.getFecha(), colaEsperaEntity.getTipoCarga());
         return CancelarColaEsperaResult.CANCELED;
+    }
+
+    @Transactional
+    public PromoverColaEsperaResult promoverColaEspera(PromoverColaEsperaDTO dto) {
+        MuelleEntity muelle = muelleRepository.findByIdAndActivoTrue(dto.getMuelleId()).orElse(null);
+        LocalDate fecha;
+        if (muelle == null) {
+            return PromoverColaEsperaResult.MUELLE_NOT_FOUND;
+        }
+
+        try {
+            fecha = LocalDate.parse(dto.getFecha());
+        } catch (DateTimeParseException e) {
+            return PromoverColaEsperaResult.FECHA_INVALIDA;
+        }
+
+        ColaEsperaEntity cola = obtenerSiguienteCola(fecha, muelle.getTipoCargaPermitida());
+        if (cola == null) {
+            return PromoverColaEsperaResult.SIN_CANDIDATOS;
+        }
+
+        ReservaDTO reservaDTO = new ReservaDTO();
+        reservaDTO.setMuelleId(muelle.getId());
+        reservaDTO.setCamionId(cola.getCamion().getId());
+        reservaDTO.setFecha(dto.getFecha());
+        reservaDTO.setHoraInicio(dto.getHoraInicio());
+        reservaDTO.setDuracionMin(dto.getDuracionMin());
+        reservaDTO.setPesoEstimadoToneladas(dto.getPesoEstimadoToneladas());
+        reservaDTO.setTipoMercaderia(dto.getTipoMercaderia());
+        reservaDTO.setNota(dto.getNota());
+
+        CreateReservaDescargaResult resultado = reservaDescargaService.crearReserva(reservaDTO);
+        if (resultado != CreateReservaDescargaResult.CREATED) {
+            return mapearResultadoReserva(resultado);
+        }
+
+        cola.setEstado("ASIGNADA");
+        colaEsperaRepository.save(cola);
+        reordenarPrioridades(cola.getFecha(), cola.getTipoCarga());
+
+        return PromoverColaEsperaResult.PROMOTED;
+    }
+
+    private ColaEsperaEntity obtenerSiguienteCola(LocalDate fecha, String tipoCargaMuelle) {
+        List<ColaEsperaEntity> colasActivas;
+        if (tipoCargaMuelle.equalsIgnoreCase("MIXTA")) {
+            colasActivas = colaEsperaRepository.findByFechaAndEstadoAndTipoCargaInOrderByPrioridadAscIdAsc(
+                fecha, "ACTIVA", List.of("SECA", "REFRIGERADA"));
+        } else {
+            colasActivas = colaEsperaRepository.findByFechaAndTipoCargaAndEstadoOrderByPrioridadAscIdAsc(
+                fecha, tipoCargaMuelle.toUpperCase(), "ACTIVA");
+        }
+        return colasActivas.stream().findFirst().orElse(null);
+    }
+
+    private PromoverColaEsperaResult mapearResultadoReserva(CreateReservaDescargaResult resultado) {
+        return switch (resultado) {
+            case MUELLE_NOT_FOUND -> PromoverColaEsperaResult.MUELLE_NOT_FOUND;
+            case TIPO_CARGA_INVALIDA -> PromoverColaEsperaResult.TIPO_CARGA_INVALIDA;
+            case PESO_EXCEDE_MUELLE -> PromoverColaEsperaResult.PESO_EXCEDE_MUELLE;
+            case FECHA_INVALIDA -> PromoverColaEsperaResult.FECHA_INVALIDA;
+            case HORA_INVALIDA -> PromoverColaEsperaResult.HORA_INVALIDA;
+            case DURACION_INVALIDA -> PromoverColaEsperaResult.DURACION_INVALIDA;
+            case FECHA_PASADA -> PromoverColaEsperaResult.FECHA_PASADA;
+            case CIERRE_CONFLICT -> PromoverColaEsperaResult.CIERRE_CONFLICT;
+            case CAMION_NOT_FOUND -> PromoverColaEsperaResult.CAMION_NOT_FOUND;
+            case CREATED -> PromoverColaEsperaResult.PROMOTED;
+        };
+    }
+
+    private void reordenarPrioridades(LocalDate fecha, String tipoCarga) {
+        List<ColaEsperaEntity> colasActivas = colaEsperaRepository.findByFechaAndTipoCargaAndEstadoOrderByPrioridadAscIdAsc(
+            fecha, tipoCarga, "ACTIVA");
+        List<ColaEsperaEntity> colasActualizadas = new ArrayList<>();
+
+        for (int i = 0; i < colasActivas.size(); i++) {
+            ColaEsperaEntity colaEsperaEntity = colasActivas.get(i);
+            int nuevaPrioridad = i + 1;
+            if (colaEsperaEntity.getPrioridad() != nuevaPrioridad) {
+                colaEsperaEntity.setPrioridad(nuevaPrioridad);
+                colasActualizadas.add(colaEsperaEntity);
+            }
+        }
+        if (!colasActualizadas.isEmpty()) {
+            colaEsperaRepository.saveAll(colasActualizadas);
+        }
     }
 }
