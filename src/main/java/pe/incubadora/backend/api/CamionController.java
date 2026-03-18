@@ -63,12 +63,14 @@ public class CamionController {
                     new ErrorResponseDTO("VALIDATION_ERROR", "Placa inválida, use formato: ABC-123"));
                 case EMPRESA_NOT_FOUND -> ResponseEntity.status(HttpStatus.NOT_FOUND).body(
                     new ErrorResponseDTO("EMPRESA_NOT_FOUND", "Empresa no encontrada"));
-                case CAMION_ASIGNADO ->  ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                case CAMION_ASIGNADO -> ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
                     new ErrorResponseDTO("VALIDATION_ERROR", "No se puede cambiar la empresa, el camión aún tiene un conductor asignado"));
                 case TIPO_CARGA_INVALIDA -> ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
                     new ErrorResponseDTO("VALIDATION_ERROR", "Tipo de carga inválida, use: SECA | REFRIGERADA"));
                 case CAPACIDAD_INVALIDA -> ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
                     new ErrorResponseDTO("VALIDATION_ERROR", "Capacidad de carga inválida, debe ser mayor a 0"));
+                case COLA_ESPERA_ACTIVA -> ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                    new ErrorResponseDTO("BUSINESS_RULE_VIOLATION", "No se puede desactivar el camión porque tiene una cola de espera activa"));
                 case UPDATED -> ResponseEntity.status(HttpStatus.OK).body("El camión se actualizó correctamente");
             };
         } catch (Exception e) {
@@ -92,6 +94,4 @@ public class CamionController {
         }
         return ResponseEntity.ok().body(camion);
     }
-
-
 }

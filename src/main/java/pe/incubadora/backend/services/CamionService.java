@@ -15,6 +15,7 @@ import pe.incubadora.backend.entities.CamionEntity;
 import pe.incubadora.backend.entities.EmpresaTransportistaEntity;
 import pe.incubadora.backend.entities.UsuarioEntity;
 import pe.incubadora.backend.repositories.CamionRepository;
+import pe.incubadora.backend.repositories.ColaEsperaRepository;
 import pe.incubadora.backend.repositories.EmpresaTransportistaRepository;
 import pe.incubadora.backend.repositories.UsuarioRepository;
 import pe.incubadora.backend.utils.CreateCamionResult;
@@ -30,6 +31,8 @@ public class CamionService {
     private EmpresaTransportistaRepository empresaTransportistaRepository;
     @Autowired
     private UsuarioRepository usuarioRepository;
+    @Autowired
+    private ColaEsperaRepository colaEsperaRepository;
 
 
     @Transactional
@@ -89,6 +92,12 @@ public class CamionService {
                 return UpdateCamionResult.CAPACIDAD_INVALIDA;
             }
             camionEntity.setCapacidadToneladas(camion.getCapacidadToneladas());
+        }
+        if (camion.getActivo() != null) {
+            if (!camion.getActivo() && colaEsperaRepository.existsByCamionIdAndEstado(camionEntity.getId(), "ACTIVA")) {
+                return UpdateCamionResult.COLA_ESPERA_ACTIVA;
+            }
+            camionEntity.setActivo(camion.getActivo());
         }
         camionRepository.save(camionEntity);
         return UpdateCamionResult.UPDATED;

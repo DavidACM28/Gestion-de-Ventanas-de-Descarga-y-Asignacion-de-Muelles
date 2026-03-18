@@ -7,5 +7,6 @@ public enum UpdateCamionResult {
     TIPO_CARGA_INVALIDA,
     CAPACIDAD_INVALIDA,
     CAMION_ASIGNADO,
+    COLA_ESPERA_ACTIVA,
     UPDATED
 }

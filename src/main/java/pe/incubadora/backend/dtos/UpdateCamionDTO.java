@@ -14,4 +14,5 @@ public class UpdateCamionDTO {
     private Long empresaId;
     private String tipoCarga;
     private BigDecimal capacidadToneladas;
+    private Boolean activo;
 }
