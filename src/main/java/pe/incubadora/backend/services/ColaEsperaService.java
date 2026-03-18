@@ -46,7 +46,7 @@ public class ColaEsperaService {
 
 
     public CreateColaEsperaResult createColaEspera(ColaEsperaDTO colaEspera) {
-        CamionEntity camionEntity = camionRepository.findById(colaEspera.getCamionId()).orElse(null);
+        CamionEntity camionEntity = camionRepository.findByIdAndActivoTrue(colaEspera.getCamionId()).orElse(null);
         LocalDate fecha;
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         assert auth != null;
@@ -89,8 +89,10 @@ public class ColaEsperaService {
     }
 
     public CreateColaEsperaResult createDesdeReserva(ColaEsperaDTO colaEspera) {
-        CamionEntity camion = camionRepository.findById(colaEspera.getCamionId()).orElse(null);
-        assert camion != null;
+        CamionEntity camion = camionRepository.findByIdAndActivoTrue(colaEspera.getCamionId()).orElse(null);
+        if (camion == null) {
+            return CreateColaEsperaResult.CAMION_NOT_FOUND;
+        }
         colaEspera.setTipoCarga(camion.getTipoCarga());
         colaEspera.setObservacion("");
         return createColaEspera(colaEspera);
@@ -117,7 +119,7 @@ public class ColaEsperaService {
             spec = spec.and((root, query, cb) -> cb.equal(root.get("tipoCarga"), tipoCarga));
         }
         if (estado != null) {
-            spec = spec.and((root, query, cb) -> cb.lessThanOrEqualTo(root.get("estado"), estado));
+            spec = spec.and((root, query, cb) -> cb.equal(root.get("estado"), estado));
         }
         if (prioridad != null) {
             spec = spec.and((root, query, cb) -> cb.equal(root.get("prioridad"), prioridad));

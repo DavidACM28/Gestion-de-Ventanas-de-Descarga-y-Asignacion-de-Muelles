@@ -3,6 +3,7 @@ package pe.incubadora.backend.api;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
@@ -92,7 +93,7 @@ public class ReservaDescargaController {
                 case CREATED -> ResponseEntity.status(HttpStatus.CREATED).body(
                     "Reserva para el " + reservaDTO.getFecha() + " a las " + reservaDTO.getHoraInicio() + "Creada con éxito");
             };
-        } catch (Exception e) {
+        } catch (DataIntegrityViolationException e) {
             if (!reservaDTO.getColaEspera()) {
                 return ResponseEntity.status(HttpStatus.CONFLICT).body(
                     new ErrorResponseDTO("RESERVA_CONFLICT", "Ya existe una reserva en este rango de hora"));
@@ -110,6 +111,9 @@ public class ReservaDescargaController {
                     new ErrorResponseDTO("RESERVA_CONFLICT", "Ya existe una reserva en este rango de hora, se agendó en lista de espera"));
                 default -> ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Error desconocido");
             };
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                new ErrorResponseDTO("INTERNAL_SERVER_ERROR", "Ocurrió un error inesperado al crear la reserva"));
         }
     }
 

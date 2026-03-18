@@ -2,6 +2,7 @@ package pe.incubadora.backend.api;
 
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,7 +18,6 @@ import pe.incubadora.backend.utils.CreateColaEsperaResult;
 import pe.incubadora.backend.utils.PromoverColaEsperaResult;
 
 import java.time.LocalDate;
-import java.time.format.DateTimeParseException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -107,15 +107,15 @@ public class ColaEsperaController {
                 case PROMOTED ->
                     ResponseEntity.status(HttpStatus.CREATED).body("Se promovió la cola de espera correctamente");
             };
-        } catch (DateTimeParseException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
-                new ErrorResponseDTO("VALIDATION_ERROR", "Fecha invalida. Use formato yyyy-MM-dd"));
-        } catch (Exception e) {
+        } catch (DataIntegrityViolationException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(
                 new ErrorResponseDTO(
                     "RESERVA_CONFLICT",
                     "Hay una reserva existente en ese rango horario que impide promover la reserva"
                 ));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                new ErrorResponseDTO("INTERNAL_SERVER_ERROR", "Ocurrio un error inesperado al promover la cola de espera"));
         }
     }
 
