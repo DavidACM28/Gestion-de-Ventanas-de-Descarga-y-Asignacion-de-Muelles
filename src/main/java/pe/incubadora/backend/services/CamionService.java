@@ -72,33 +72,11 @@ public class CamionService {
         if (camionEntity == null) {
             return UpdateCamionResult.CAMION_NOT_FOUND;
         }
-        if (camion.getEmpresaId() != null) {
-            if (!empresaTransportistaRepository.existsById(camion.getEmpresaId())) {
-                return UpdateCamionResult.EMPRESA_NOT_FOUND;
-            }
-            if (usuarioRepository.existsByCamionId(camionEntity.getId())) {
-                return UpdateCamionResult.CAMION_ASIGNADO;
-            }
-            camionEntity.setEmpresa(empresaTransportistaRepository.findById(camion.getEmpresaId()).orElse(null));
+        UpdateCamionResult resultado = validarUpdateCamion(camion, camionEntity);
+        if (resultado != null) {
+            return resultado;
         }
-        if (camion.getTipoCarga() != null) {
-            if (!camion.getTipoCarga().equalsIgnoreCase("seca") &&  !camion.getTipoCarga().equalsIgnoreCase("refrigerada")) {
-                return UpdateCamionResult.TIPO_CARGA_INVALIDA;
-            }
-            camionEntity.setTipoCarga(camion.getTipoCarga().toUpperCase());
-        }
-        if (camion.getCapacidadToneladas() != null) {
-            if (camion.getCapacidadToneladas().doubleValue() < 0.1){
-                return UpdateCamionResult.CAPACIDAD_INVALIDA;
-            }
-            camionEntity.setCapacidadToneladas(camion.getCapacidadToneladas());
-        }
-        if (camion.getActivo() != null) {
-            if (!camion.getActivo() && colaEsperaRepository.existsByCamionIdAndEstado(camionEntity.getId(), "ACTIVA")) {
-                return UpdateCamionResult.COLA_ESPERA_ACTIVA;
-            }
-            camionEntity.setActivo(camion.getActivo());
-        }
+        aplicarCambios(camion, camionEntity);
         camionRepository.save(camionEntity);
         return UpdateCamionResult.UPDATED;
     }
@@ -119,5 +97,45 @@ public class CamionService {
             }
         }
         return camionEntity;
+    }
+
+    private UpdateCamionResult validarUpdateCamion(UpdateCamionDTO camion, CamionEntity camionEntity) {
+        if (camion.getEmpresaId() != null) {
+            if (!empresaTransportistaRepository.existsById(camion.getEmpresaId())) {
+                return UpdateCamionResult.EMPRESA_NOT_FOUND;
+            }
+            if (usuarioRepository.existsByCamionId(camionEntity.getId())) {
+                return UpdateCamionResult.CAMION_ASIGNADO;
+            }
+        }
+        if (camion.getTipoCarga() != null) {
+            if (!camion.getTipoCarga().equalsIgnoreCase("seca") && !camion.getTipoCarga().equalsIgnoreCase("refrigerada")) {
+                return UpdateCamionResult.TIPO_CARGA_INVALIDA;
+            }
+        }
+        if (camion.getCapacidadToneladas() != null && camion.getCapacidadToneladas().doubleValue() < 0.1) {
+            return UpdateCamionResult.CAPACIDAD_INVALIDA;
+        }
+        if (camion.getActivo() != null) {
+            if (!camion.getActivo() && colaEsperaRepository.existsByCamionIdAndEstado(camionEntity.getId(), "ACTIVA")) {
+                return UpdateCamionResult.COLA_ESPERA_ACTIVA;
+            }
+        }
+        return null;
+    }
+
+    private void aplicarCambios(UpdateCamionDTO camion, CamionEntity camionEntity) {
+        if (camion.getEmpresaId() != null) {
+            camionEntity.setEmpresa(empresaTransportistaRepository.findById(camion.getEmpresaId()).orElse(null));
+        }
+        if (camion.getTipoCarga() != null) {
+            camionEntity.setTipoCarga(camion.getTipoCarga().toUpperCase());
+        }
+        if (camion.getCapacidadToneladas() != null) {
+            camionEntity.setCapacidadToneladas(camion.getCapacidadToneladas());
+        }
+        if (camion.getActivo() != null) {
+            camionEntity.setActivo(camion.getActivo());
+        }
     }
 }

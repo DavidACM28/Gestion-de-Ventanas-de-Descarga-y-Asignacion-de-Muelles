@@ -40,37 +40,11 @@ public class EmpresaTransportistaService {
         if (empresaTransportistaEntity == null) {
             return UpdateEmpresaResult.EMPRESA_NOT_FOUND;
         }
-        if (empresa.getRuc() != null && !empresa.getRuc().equals(empresaTransportistaEntity.getRuc())) {
-            if (!empresa.getRuc().matches("\\d+") || empresa.getRuc().trim().length() != 11) {
-                return UpdateEmpresaResult.RUC_INVALIDO;
-            }
-            empresaTransportistaEntity.setRuc(empresa.getRuc());
+        UpdateEmpresaResult resultado = validarUpdateEmpresa(empresa, empresaTransportistaEntity);
+        if (resultado != null) {
+            return resultado;
         }
-        if (empresa.getRazonSocial() != null){
-            if (empresa.getRazonSocial().trim().length() < 3){
-                return UpdateEmpresaResult.RAZON_SOCIAL_INVALIDA;
-            }
-            empresaTransportistaEntity.setRazonSocial(empresa.getRazonSocial());
-        }
-        if (empresa.getContactoNombre() != null){
-            if (empresa.getContactoNombre().trim().isEmpty()){
-                return  UpdateEmpresaResult.NOMBRE_CONTACTO_INVALIDO;
-            }
-            empresaTransportistaEntity.setContactoNombre(empresa.getContactoNombre());
-        }
-        if (empresa.getContactoTelefono() != null){
-            if (!empresa.getContactoTelefono().matches("\\d+") || empresa.getContactoTelefono().trim().length() != 9) {
-                return UpdateEmpresaResult.TELEFONO_CONTACTO_INVALIDO;
-            }
-            empresaTransportistaEntity.setContactoTelefono(empresa.getContactoTelefono());
-        }
-        if (empresa.getEmail() != null){
-            EmailValidator emailValidator = new EmailValidator();
-            if (!emailValidator.isValid(empresa.getEmail(), null)){
-                return  UpdateEmpresaResult.EMAIL_INVALIDO;
-            }
-            empresaTransportistaEntity.setEmail(empresa.getEmail());
-        }
+        aplicarCambios(empresa, empresaTransportistaEntity);
         empresaTransportistaRepository.save(empresaTransportistaEntity);
         return UpdateEmpresaResult.UPDATED;
     }
@@ -81,5 +55,51 @@ public class EmpresaTransportistaService {
 
     public EmpresaTransportistaEntity getEmpresa(Long id) {
         return empresaTransportistaRepository.findById(id).orElse(null);
+    }
+
+    private UpdateEmpresaResult validarUpdateEmpresa(
+        EmpresaTransportistaDTO empresa, EmpresaTransportistaEntity empresaTransportistaEntity) {
+
+        if (empresa.getRuc() != null && !empresa.getRuc().equals(empresaTransportistaEntity.getRuc())) {
+            if (!empresa.getRuc().matches("\\d+") || empresa.getRuc().trim().length() != 11) {
+                return UpdateEmpresaResult.RUC_INVALIDO;
+            }
+        }
+        if (empresa.getRazonSocial() != null && empresa.getRazonSocial().trim().length() < 3) {
+            return UpdateEmpresaResult.RAZON_SOCIAL_INVALIDA;
+        }
+        if (empresa.getContactoNombre() != null && empresa.getContactoNombre().trim().isEmpty()) {
+            return UpdateEmpresaResult.NOMBRE_CONTACTO_INVALIDO;
+        }
+        if (empresa.getContactoTelefono() != null) {
+            if (!empresa.getContactoTelefono().matches("\\d+") || empresa.getContactoTelefono().trim().length() != 9) {
+                return UpdateEmpresaResult.TELEFONO_CONTACTO_INVALIDO;
+            }
+        }
+        if (empresa.getEmail() != null) {
+            EmailValidator emailValidator = new EmailValidator();
+            if (!emailValidator.isValid(empresa.getEmail(), null)) {
+                return UpdateEmpresaResult.EMAIL_INVALIDO;
+            }
+        }
+        return null;
+    }
+
+    private void aplicarCambios(EmpresaTransportistaDTO empresa, EmpresaTransportistaEntity empresaTransportistaEntity) {
+        if (empresa.getRuc() != null && !empresa.getRuc().equals(empresaTransportistaEntity.getRuc())) {
+            empresaTransportistaEntity.setRuc(empresa.getRuc());
+        }
+        if (empresa.getRazonSocial() != null) {
+            empresaTransportistaEntity.setRazonSocial(empresa.getRazonSocial());
+        }
+        if (empresa.getContactoNombre() != null) {
+            empresaTransportistaEntity.setContactoNombre(empresa.getContactoNombre());
+        }
+        if (empresa.getContactoTelefono() != null) {
+            empresaTransportistaEntity.setContactoTelefono(empresa.getContactoTelefono());
+        }
+        if (empresa.getEmail() != null) {
+            empresaTransportistaEntity.setEmail(empresa.getEmail());
+        }
     }
 }

@@ -37,29 +37,11 @@ public class MuelleService {
         if (muelleEntity == null) {
             return UpdateMuelleResult.MUELLE_NOT_FOUND;
         }
-        if (muelle.getCodigo() != null) {
-            muelleEntity.setCodigo(muelle.getCodigo());
+        UpdateMuelleResult resultado = validarUpdateMuelle(muelle);
+        if (resultado != null) {
+            return resultado;
         }
-        if (muelle.getNombre() != null) {
-            if (muelle.getNombre().trim().length() < 3) {
-                return UpdateMuelleResult.NOMBRE_INVALIDO;
-            }
-            muelleEntity.setNombre(muelle.getNombre());
-        }
-        if (muelle.getTipoCargaPermitida() != null) {
-            if (!muelle.getTipoCargaPermitida().equalsIgnoreCase("seca") &&
-                !muelle.getTipoCargaPermitida().equalsIgnoreCase("refrigerada"))
-            {
-                return UpdateMuelleResult.TIPO_CARGA_INVALIDA;
-            }
-            muelleEntity.setTipoCargaPermitida(muelle.getTipoCargaPermitida().toUpperCase());
-        }
-        if (muelle.getCapacidadToneladas() != null) {
-            if (muelle.getCapacidadToneladas().doubleValue() < 0.1) {
-                return UpdateMuelleResult.CAPACIDAD_INVALIDA;
-            }
-            muelleEntity.setCapacidadToneladas(muelle.getCapacidadToneladas());
-        }
+        aplicarCambios(muelle, muelleEntity);
         muelleRepository.save(muelleEntity);
         return UpdateMuelleResult.UPDATED;
     }
@@ -70,5 +52,36 @@ public class MuelleService {
 
     public MuelleEntity getMuelle(Long id) {
         return muelleRepository.findById(id).orElse(null);
+    }
+
+    private UpdateMuelleResult validarUpdateMuelle(MuelleDTO muelle) {
+        if (muelle.getNombre() != null && muelle.getNombre().trim().length() < 3) {
+            return UpdateMuelleResult.NOMBRE_INVALIDO;
+        }
+        if (muelle.getTipoCargaPermitida() != null) {
+            if (!muelle.getTipoCargaPermitida().equalsIgnoreCase("seca") &&
+                !muelle.getTipoCargaPermitida().equalsIgnoreCase("refrigerada")) {
+                return UpdateMuelleResult.TIPO_CARGA_INVALIDA;
+            }
+        }
+        if (muelle.getCapacidadToneladas() != null && muelle.getCapacidadToneladas().doubleValue() < 0.1) {
+            return UpdateMuelleResult.CAPACIDAD_INVALIDA;
+        }
+        return null;
+    }
+
+    private void aplicarCambios(MuelleDTO muelle, MuelleEntity muelleEntity) {
+        if (muelle.getCodigo() != null) {
+            muelleEntity.setCodigo(muelle.getCodigo());
+        }
+        if (muelle.getNombre() != null) {
+            muelleEntity.setNombre(muelle.getNombre());
+        }
+        if (muelle.getTipoCargaPermitida() != null) {
+            muelleEntity.setTipoCargaPermitida(muelle.getTipoCargaPermitida().toUpperCase());
+        }
+        if (muelle.getCapacidadToneladas() != null) {
+            muelleEntity.setCapacidadToneladas(muelle.getCapacidadToneladas());
+        }
     }
 }
