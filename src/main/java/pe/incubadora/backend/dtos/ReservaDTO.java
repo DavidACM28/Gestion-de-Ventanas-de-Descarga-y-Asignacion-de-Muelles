@@ -38,4 +38,5 @@ public class ReservaDTO {
     private String tipoMercaderia;
 
     private String nota;
+    private Boolean colaEspera  = false;
 }

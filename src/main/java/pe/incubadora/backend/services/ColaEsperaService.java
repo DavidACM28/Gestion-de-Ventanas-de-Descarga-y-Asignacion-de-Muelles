@@ -44,7 +44,6 @@ public class ColaEsperaService {
     @Autowired
     private ReservaDescargaService reservaDescargaService;
 
-    private final List<Integer> duracionesValidas = List.of(30, 60, 90, 120);
 
     public CreateColaEsperaResult createColaEspera(ColaEsperaDTO colaEspera) {
         CamionEntity camionEntity = camionRepository.findById(colaEspera.getCamionId()).orElse(null);
@@ -87,6 +86,14 @@ public class ColaEsperaService {
         colaEsperaEntity.setObservacion(colaEspera.getObservacion());
         colaEsperaRepository.save(colaEsperaEntity);
         return CreateColaEsperaResult.CREATED;
+    }
+
+    public CreateColaEsperaResult createDesdeReserva(ColaEsperaDTO colaEspera) {
+        CamionEntity camion = camionRepository.findById(colaEspera.getCamionId()).orElse(null);
+        assert camion != null;
+        colaEspera.setTipoCarga(camion.getTipoCarga());
+        colaEspera.setObservacion("");
+        return createColaEspera(colaEspera);
     }
 
     public Page<ColaEsperaEntity> getColasConFiltros(

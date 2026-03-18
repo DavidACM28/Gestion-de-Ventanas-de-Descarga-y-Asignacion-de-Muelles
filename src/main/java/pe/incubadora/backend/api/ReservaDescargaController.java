@@ -9,11 +9,14 @@ import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import pe.incubadora.backend.dtos.ColaEsperaDTO;
 import pe.incubadora.backend.dtos.ErrorResponseDTO;
 import pe.incubadora.backend.dtos.ReservaDTO;
 import pe.incubadora.backend.entities.ReservaDescargaEntity;
+import pe.incubadora.backend.services.ColaEsperaService;
 import pe.incubadora.backend.services.ReservaDescargaService;
 import pe.incubadora.backend.utils.CambiarEstadoReservaResult;
+import pe.incubadora.backend.utils.CreateColaEsperaResult;
 import pe.incubadora.backend.utils.CreateReservaDescargaResult;
 import pe.incubadora.backend.utils.UpdateReservaResult;
 
@@ -28,6 +31,8 @@ import java.util.Map;
 public class ReservaDescargaController {
     @Autowired
     private ReservaDescargaService reservaDescargaService;
+    @Autowired
+    private ColaEsperaService colaEsperaService;
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<Object> handleTypeMismatchException() {
@@ -88,8 +93,23 @@ public class ReservaDescargaController {
                     "Reserva para el " + reservaDTO.getFecha() + " a las " + reservaDTO.getHoraInicio() + "Creada con éxito");
             };
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(
-                new ErrorResponseDTO("RESERVA_CONFLICT", "Ya existe una reserva en este rango de hora"));
+            if (!reservaDTO.getColaEspera()) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(
+                    new ErrorResponseDTO("RESERVA_CONFLICT", "Ya existe una reserva en este rango de hora"));
+            }
+            ColaEsperaDTO colaEsperaDTO = new ColaEsperaDTO();
+            colaEsperaDTO.setCamionId(reservaDTO.getCamionId());
+            colaEsperaDTO.setFecha(reservaDTO.getFecha());
+            CreateColaEsperaResult resultado = colaEsperaService.createDesdeReserva(colaEsperaDTO);
+            return switch (resultado) {
+                case CAMION_EN_LISTA -> ResponseEntity.status(HttpStatus.CONFLICT).body(
+                    new ErrorResponseDTO("RESERVA_CONFLICT", "Ya existe una reserva en este rango de hora y el camión ya está en la lista de espera"));
+                case COLA_LLENA -> ResponseEntity.status(HttpStatus.CONFLICT).body(
+                    new ErrorResponseDTO("RESERVA_CONFLICT", "Ya existe una reserva en este rango de hora y la cola está llena"));
+                case CREATED -> ResponseEntity.status(HttpStatus.CONFLICT).body(
+                    new ErrorResponseDTO("RESERVA_CONFLICT", "Ya existe una reserva en este rango de hora, se agendó en lista de espera"));
+                default -> ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Error desconocido");
+            };
         }
     }
 
@@ -168,7 +188,7 @@ public class ReservaDescargaController {
             case ESTADO_INVALIDO -> ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
                 new ErrorResponseDTO("VALIDATION_ERROR", "Estado inválido, " +
                     "solo se pueden confirmar reservaciones con estado solicitada"));
-            case OK ->  ResponseEntity.status(HttpStatus.OK).body("Se confirmó la reserva");
+            case OK -> ResponseEntity.status(HttpStatus.OK).body("Se confirmó la reserva");
             default -> ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Error desconocido");
         };
     }
@@ -182,10 +202,10 @@ public class ReservaDescargaController {
             case ESTADO_INVALIDO -> ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
                 new ErrorResponseDTO("VALIDATION_ERROR", "Estado inválido, " +
                     "solo se puede hacer check in a reservaciones con estado confirmada"));
-            case FUERA_DE_VENTANA ->  ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+            case FUERA_DE_VENTANA -> ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
                 new ErrorResponseDTO("VALIDATION_ERROR", "Solo se puede hacer chek in desde 30 minutos " +
                     "antes de la hora de reserva y hasta 20 minutos después de la hora de reserva"));
-            case OK ->  ResponseEntity.status(HttpStatus.OK).body("Se hizó chek in a la reserva");
+            case OK -> ResponseEntity.status(HttpStatus.OK).body("Se hizó chek in a la reserva");
         };
     }
 
@@ -198,7 +218,7 @@ public class ReservaDescargaController {
             case ESTADO_INVALIDO -> ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
                 new ErrorResponseDTO("VALIDATION_ERROR", "Estado inválido, " +
                     "solo se pueden empezar a descargar reservaciones con estado chek in"));
-            case OK ->  ResponseEntity.status(HttpStatus.OK).body("Se inició la descarga");
+            case OK -> ResponseEntity.status(HttpStatus.OK).body("Se inició la descarga");
             default -> ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Error desconocido");
         };
     }
@@ -212,7 +232,7 @@ public class ReservaDescargaController {
             case ESTADO_INVALIDO -> ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
                 new ErrorResponseDTO("VALIDATION_ERROR", "Estado inválido, " +
                     "solo se pueden finalizar reservaciones con estado en descarga"));
-            case OK ->  ResponseEntity.status(HttpStatus.OK).body("Se finalizó la reserva");
+            case OK -> ResponseEntity.status(HttpStatus.OK).body("Se finalizó la reserva");
             default -> ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Error desconocido");
         };
     }
@@ -226,10 +246,10 @@ public class ReservaDescargaController {
             case ESTADO_INVALIDO -> ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
                 new ErrorResponseDTO("VALIDATION_ERROR", "Estado inválido, " +
                     "solo se puede cancelar reservaciones con estado solicitada, confirmada o check in"));
-            case FUERA_DE_VENTANA ->  ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+            case FUERA_DE_VENTANA -> ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
                 new ErrorResponseDTO("VALIDATION_ERROR", "Solo se puede cancelar una reserva con 3 " +
                     "horas de anticipación"));
-            case OK ->  ResponseEntity.status(HttpStatus.OK).body("Se canceló a la reserva");
+            case OK -> ResponseEntity.status(HttpStatus.OK).body("Se canceló a la reserva");
         };
     }
 
@@ -242,7 +262,7 @@ public class ReservaDescargaController {
             case ESTADO_INVALIDO -> ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
                 new ErrorResponseDTO("VALIDATION_ERROR", "Estado inválido, " +
                     "solo se puede marcar como no show reservaciones con estado confirmada"));
-            case OK ->  ResponseEntity.status(HttpStatus.OK).body("Se marcó como no show");
+            case OK -> ResponseEntity.status(HttpStatus.OK).body("Se marcó como no show");
             default -> ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Error desconocido");
         };
     }
