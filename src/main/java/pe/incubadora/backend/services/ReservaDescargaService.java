@@ -26,6 +26,12 @@ import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Centralizes reservation business logic.
+ *
+ * <p>This service handles reservation creation, updates, filtering,
+ * ownership checks and state transitions.</p>
+ */
 @Service
 public class ReservaDescargaService {
     @Autowired
@@ -43,6 +49,12 @@ public class ReservaDescargaService {
 
     private final List<Integer> duracionesValidas = List.of(30, 60, 90, 120);
 
+    /**
+     * Creates a reservation and persists its occupied slots inside the same transaction.
+     *
+     * @param reservaDTO reservation payload
+     * @return reservation creation result
+     */
     @Transactional
     public CreateReservaDescargaResult crearReserva(ReservaDTO reservaDTO) {
         LocalTime horaInicio;
@@ -62,6 +74,9 @@ public class ReservaDescargaService {
         if (roles.contains("ROLE_TRANSPORTISTA")) {
             UsuarioEntity usuario = usuarioRepository.findByUsername(auth.getName()).orElse(null);
             assert usuario != null;
+            if (usuario.getCamion() == null) {
+                return CreateReservaDescargaResult.CAMION_NOT_FOUND;
+            }
             if (!usuario.getCamion().getId().equals(camionEntity.getId())) {
                 return CreateReservaDescargaResult.CAMION_NOT_FOUND;
             }
@@ -123,6 +138,13 @@ public class ReservaDescargaService {
         return CreateReservaDescargaResult.CREATED;
     }
 
+    /**
+     * Updates a reservation and recomputes its occupied slots when needed.
+     *
+     * @param reservaDTO partial update payload
+     * @param id reservation identifier
+     * @return update result
+     */
     @Transactional
     public UpdateReservaResult updateReserva(ReservaDTO reservaDTO, Long id) {
         ReservaDescargaEntity reserva = reservaDescargaRepository.findById(id).orElse(null);
@@ -181,6 +203,12 @@ public class ReservaDescargaService {
         return UpdateReservaResult.UPDATED;
     }
 
+    /**
+     * Retrieves a reservation visible to the authenticated user.
+     *
+     * @param id reservation identifier
+     * @return reservation entity or {@code null} when it cannot be accessed
+     */
     public ReservaDescargaEntity getReserva(Long id) {
         ReservaDescargaEntity reserva = reservaDescargaRepository.findById(id).orElse(null);
         if (reserva == null) {
@@ -191,7 +219,9 @@ public class ReservaDescargaService {
         List<String> roles = auth.getAuthorities().stream().map(GrantedAuthority::getAuthority).toList();
         if (roles.contains("ROLE_TRANSPORTISTA")) {
             UsuarioEntity usuario = usuarioRepository.findByUsername(auth.getName()).orElse(null);
-            assert usuario != null;
+            if (usuario == null || usuario.getCamion() == null) {
+                return null;
+            }
             if (!usuario.getCamion().getId().equals(reserva.getCamion().getId())) {
                 return null;
             }
@@ -199,19 +229,41 @@ public class ReservaDescargaService {
         return reserva;
     }
 
+    /**
+     * Returns reservations using optional filters and pagination.
+     *
+     * @param muelleId dock filter
+     * @param camionId truck filter
+     * @param empresaId company filter
+     * @param fechaDesde lower date bound
+     * @param fechaHasta upper date bound
+     * @param estado status filter
+     * @param tipoCarga cargo type filter
+     * @param page zero-based page number
+     * @param size page size
+     * @param sort sort direction keyword
+     * @return paginated reservation data
+     */
     public Page<ReservaDescargaEntity> getReservasConFiltros(
         Long muelleId, Long camionId, Long empresaId, LocalDate fechaDesde, LocalDate fechaHasta,
         String estado, String tipoCarga, int page, int size, String sort) {
 
+        Sort.Direction direction = "descending".equalsIgnoreCase(sort) ? Sort.Direction.DESC : Sort.Direction.ASC;
+        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, "id"));
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         assert auth != null;
         List<String> roles = auth.getAuthorities().stream().map(GrantedAuthority::getAuthority).toList();
         UsuarioEntity usuario = usuarioRepository.findByUsername(auth.getName()).orElse(null);
-        assert usuario != null;
+        if (usuario == null) {
+            return Page.empty(pageable);
+        }
 
         Specification<ReservaDescargaEntity> spec = Specification.where((root, query, cb) -> cb.conjunction());
 
         if (roles.contains("ROLE_TRANSPORTISTA")) {
+            if (usuario.getCamion() == null) {
+                return Page.empty(pageable);
+            }
             spec = spec.and((root, query, cb) -> cb.equal(root.get("camion").get("id"), usuario.getCamion().getId()));
         }
         if (muelleId != null) {
@@ -236,11 +288,15 @@ public class ReservaDescargaService {
             spec = spec.and((root, query, cb) -> cb.equal(root.get("muelle").get("tipoCargaPermitida"), tipoCarga.toUpperCase()));
         }
 
-        Sort.Direction direction = "descending".equalsIgnoreCase(sort) ? Sort.Direction.DESC : Sort.Direction.ASC;
-        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, "id"));
         return reservaDescargaRepository.findAll(spec, pageable);
     }
 
+    /**
+     * Confirms a requested reservation.
+     *
+     * @param id reservation identifier
+     * @return state transition result
+     */
     public CambiarEstadoReservaResult confirmarReserva(Long id) {
 
         ReservaDescargaEntity reserva = reservaDescargaRepository.findById(id).orElse(null);
@@ -255,6 +311,12 @@ public class ReservaDescargaService {
         return CambiarEstadoReservaResult.OK;
     }
 
+    /**
+     * Performs reservation check-in if the current time is inside the allowed window.
+     *
+     * @param id reservation identifier
+     * @return state transition result
+     */
     public CambiarEstadoReservaResult checkInReserva(Long id) {
         ReservaDescargaEntity reserva = reservaDescargaRepository.findById(id).orElse(null);
 
@@ -277,6 +339,12 @@ public class ReservaDescargaService {
         return CambiarEstadoReservaResult.OK;
     }
 
+    /**
+     * Marks a checked-in reservation as unloading.
+     *
+     * @param id reservation identifier
+     * @return state transition result
+     */
     public CambiarEstadoReservaResult iniciarReserva(Long id) {
         ReservaDescargaEntity reserva = reservaDescargaRepository.findById(id).orElse(null);
 
@@ -291,6 +359,12 @@ public class ReservaDescargaService {
         return CambiarEstadoReservaResult.OK;
     }
 
+    /**
+     * Finalizes an unloading reservation.
+     *
+     * @param id reservation identifier
+     * @return state transition result
+     */
     public CambiarEstadoReservaResult finalizarReserva(Long id) {
 
         ReservaDescargaEntity reserva = reservaDescargaRepository.findById(id).orElse(null);
@@ -306,6 +380,12 @@ public class ReservaDescargaService {
         return CambiarEstadoReservaResult.OK;
     }
 
+    /**
+     * Cancels a reservation and frees its slot rows.
+     *
+     * @param id reservation identifier
+     * @return state transition result
+     */
     public CambiarEstadoReservaResult cancelarReserva(Long id) {
 
         ReservaDescargaEntity reserva = reservaDescargaRepository.findById(id).orElse(null);
@@ -318,8 +398,13 @@ public class ReservaDescargaService {
         assert auth != null;
         List<String> roles = auth.getAuthorities().stream().map(GrantedAuthority::getAuthority).toList();
         UsuarioEntity usuario = usuarioRepository.findByUsername(auth.getName()).orElse(null);
-        assert usuario != null;
+        if (usuario == null) {
+            return CambiarEstadoReservaResult.RESERVA_NOT_FOUND;
+        }
         if (roles.contains("ROLE_TRANSPORTISTA")) {
+            if (usuario.getCamion() == null) {
+                return CambiarEstadoReservaResult.RESERVA_NOT_FOUND;
+            }
             if (!reserva.getCamion().getId().equals(usuario.getCamion().getId())) {
                 return CambiarEstadoReservaResult.RESERVA_NOT_FOUND;
             }
@@ -340,6 +425,12 @@ public class ReservaDescargaService {
         return CambiarEstadoReservaResult.OK;
     }
 
+    /**
+     * Marks a confirmed reservation as no-show.
+     *
+     * @param id reservation identifier
+     * @return state transition result
+     */
     public CambiarEstadoReservaResult noShowReserva(Long id) {
 
         ReservaDescargaEntity reserva = reservaDescargaRepository.findById(id).orElse(null);
@@ -355,6 +446,13 @@ public class ReservaDescargaService {
         return CambiarEstadoReservaResult.OK;
     }
 
+    /**
+     * Validates mutable reservation fields before applying an update.
+     *
+     * @param dto incoming update payload
+     * @param reserva current persisted reservation
+     * @return validation result or {@code null} when valid
+     */
     private UpdateReservaResult validarUpdateReserva(ReservaDTO dto, ReservaDescargaEntity reserva) {
         MuelleEntity muelle = reserva.getMuelle();
         CamionEntity camion = reserva.getCamion();
@@ -408,6 +506,12 @@ public class ReservaDescargaService {
         return null;
     }
 
+    /**
+     * Applies already validated reservation changes to the managed entity.
+     *
+     * @param dto validated update payload
+     * @param reserva entity to mutate
+     */
     private void aplicarCambios(ReservaDTO dto, ReservaDescargaEntity reserva) {
         if (dto.getMuelleId() != null) {
             reserva.setMuelle(muelleRepository.findById(dto.getMuelleId()).orElse(null));
@@ -435,6 +539,13 @@ public class ReservaDescargaService {
         }
     }
 
+    /**
+     * Expands a reservation window into 30-minute slot boundaries.
+     *
+     * @param horaInicio reservation start time
+     * @param duracionMin reservation duration in minutes
+     * @return list of occupied slot start times
+     */
     private List<LocalTime> calcularSlots(LocalTime horaInicio, int duracionMin) {
         List<LocalTime> slots = new ArrayList<>();
         LocalTime horaFin = horaInicio.plusMinutes(duracionMin);
