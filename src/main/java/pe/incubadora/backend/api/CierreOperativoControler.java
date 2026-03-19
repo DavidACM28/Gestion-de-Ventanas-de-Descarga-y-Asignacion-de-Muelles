@@ -21,36 +21,66 @@ import java.time.format.DateTimeParseException;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Exposes operational closure endpoints.
+ */
 @RestController
 @RequestMapping("/api/v1")
 public class CierreOperativoControler {
     @Autowired
     private CierreOperativoService cierreOperativoService;
 
+    /**
+     * Handles invalid request parameter types used in filter endpoints.
+     *
+     * @return a standardized validation error response
+     */
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<Object> handleTypeMismatchException() {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
             new ErrorResponseDTO("VALIDATION_ERROR", "Asegúrese de que los filtros se envíen con el formato correcto"));
     }
 
+    /**
+     * Handles invalid enum or parsing arguments coming from request parameters.
+     *
+     * @return a standardized validation error response
+     */
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Object> handleIllegalArgumentException() {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
             new ErrorResponseDTO("VALIDATION_ERROR", "Asegúrese de que los filtros se envíen con el formato correcto"));
     }
 
+    /**
+     * Handles missing required pagination parameters.
+     *
+     * @return a standardized validation error response
+     */
     @ExceptionHandler(MissingServletRequestParameterException.class)
     public ResponseEntity<Object> handleMissingServletRequestParameterException() {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
             new ErrorResponseDTO("VALIDATION_ERROR", "Los parámetros: size, page, y sort, son obligatorios"));
     }
 
+    /**
+     * Handles invalid date filters in requests.
+     *
+     * @return a standardized validation error response
+     */
     @ExceptionHandler(DateTimeParseException.class)
     public ResponseEntity<Object> handleDateTimeParseException() {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
             new ErrorResponseDTO("VALIDATION_ERROR", "Fecha invalida. Use formato yyyy-MM-dd"));
     }
 
+    /**
+     * Creates a new operational closure.
+     *
+     * @param cierreOperativoDTO closure payload
+     * @param result validation result populated by Spring
+     * @return a creation response or a domain-specific validation error
+     */
     @PostMapping("/cierres")
     public ResponseEntity<Object> crearCierre(@Valid @RequestBody CierreOperativoDTO cierreOperativoDTO, BindingResult result) {
         if (result.hasErrors()) {
@@ -81,6 +111,18 @@ public class CierreOperativoControler {
         };
     }
 
+    /**
+     * Retrieves operational closures using optional filters and pagination.
+     *
+     * @param muelleId dock identifier filter
+     * @param fechaDesde lower date bound
+     * @param fechaHasta upper date bound
+     * @param tipo closure type filter
+     * @param page zero-based page number
+     * @param size page size
+     * @param sort sort direction keyword
+     * @return a paginated list of closures
+     */
     @GetMapping("/cierres")
     public ResponseEntity<Object> getCierreOperativos(
         @RequestParam(required = false) Long muelleId, @RequestParam(required = false) String fechaDesde,
@@ -99,6 +141,12 @@ public class CierreOperativoControler {
         return ResponseEntity.status(HttpStatus.OK).body(reservas);
     }
 
+    /**
+     * Deletes an operational closure by identifier.
+     *
+     * @param id closure identifier
+     * @return success or not found response
+     */
     @DeleteMapping("/cierres/{id}")
     public ResponseEntity<Object> eliminarCierreOperativo(@PathVariable Long id) {
         if (cierreOperativoService.deleteCierreOperativo(id)) {

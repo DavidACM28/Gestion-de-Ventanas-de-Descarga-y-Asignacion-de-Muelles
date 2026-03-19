@@ -16,12 +16,22 @@ import pe.incubadora.backend.utils.UpdateMuelleResult;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * REST controller for dock management endpoints.
+ */
 @RestController
 @RequestMapping("/api/v1")
 public class MuelleController {
     @Autowired
     private MuelleService muelleService;
 
+    /**
+     * Creates a new dock.
+     *
+     * @param muelleDTO dock payload
+     * @param result validation result populated by Spring
+     * @return success or validation response
+     */
     @PostMapping("/muelles")
     private ResponseEntity<Object> createMuelle(@Valid @RequestBody MuelleDTO muelleDTO, BindingResult result) {
         if (result.hasErrors()) {
@@ -44,6 +54,13 @@ public class MuelleController {
         }
     }
 
+    /**
+     * Updates an existing dock.
+     *
+     * @param muelleDTO partial update payload
+     * @param id dock identifier
+     * @return success or validation/domain error response
+     */
     @PutMapping("/muelles/{id}")
     private ResponseEntity<Object> updateMuelle(@RequestBody MuelleDTO muelleDTO, @PathVariable Long id) {
         try {
@@ -65,12 +82,24 @@ public class MuelleController {
         }
     }
 
+    /**
+     * Returns a paginated list of docks.
+     *
+     * @param page zero-based page number
+     * @return paginated dock data
+     */
     @GetMapping("/muelles")
     private ResponseEntity<Object> getMuelles(@RequestParam int page) {
         Pageable pageable = Pageable.ofSize(10).withPage(page);
         return ResponseEntity.status(HttpStatus.OK).body(muelleService.getMuelles(pageable));
     }
 
+    /**
+     * Retrieves a dock by identifier.
+     *
+     * @param id dock identifier
+     * @return the dock or a not found response
+     */
     @GetMapping("/muelles/{id}")
     private ResponseEntity<Object> getMuelle(@PathVariable Long id) {
         MuelleEntity muelleEntity = muelleService.getMuelle(id);

@@ -10,11 +10,20 @@ import pe.incubadora.backend.entities.MuelleEntity;
 import pe.incubadora.backend.repositories.MuelleRepository;
 import pe.incubadora.backend.utils.UpdateMuelleResult;
 
+/**
+ * Encapsulates dock business logic.
+ */
 @Service
 public class MuelleService {
     @Autowired
     private MuelleRepository muelleRepository;
 
+    /**
+     * Creates a dock after validating its supported cargo type.
+     *
+     * @param muelle dock payload
+     * @return {@code true} when the dock is valid and was persisted
+     */
     @Transactional
     public boolean crearMuelle(MuelleDTO muelle) {
         if (!muelle.getTipoCargaPermitida().equalsIgnoreCase("seca") &&
@@ -32,6 +41,13 @@ public class MuelleService {
         return true;
     }
 
+    /**
+     * Updates an existing dock.
+     *
+     * @param muelle partial update payload
+     * @param id dock identifier
+     * @return update result
+     */
     @Transactional
     public UpdateMuelleResult actualizarMuelle(MuelleDTO muelle, Long id) {
         MuelleEntity muelleEntity = muelleRepository.findById(id).orElse(null);
@@ -47,14 +63,32 @@ public class MuelleService {
         return UpdateMuelleResult.UPDATED;
     }
 
+    /**
+     * Returns paginated dock data.
+     *
+     * @param pageable pagination information
+     * @return paginated docks
+     */
     public Page<MuelleEntity> getMuelles(Pageable pageable) {
         return muelleRepository.findAll(pageable);
     }
 
+    /**
+     * Retrieves a dock by identifier.
+     *
+     * @param id dock identifier
+     * @return dock entity or {@code null} when not found
+     */
     public MuelleEntity getMuelle(Long id) {
         return muelleRepository.findById(id).orElse(null);
     }
 
+    /**
+     * Validates mutable dock fields before applying an update.
+     *
+     * @param muelle incoming update payload
+     * @return validation result or {@code null} when valid
+     */
     private UpdateMuelleResult validarUpdateMuelle(MuelleDTO muelle) {
         if (muelle.getNombre() != null && muelle.getNombre().trim().length() < 3) {
             return UpdateMuelleResult.NOMBRE_INVALIDO;
@@ -72,6 +106,12 @@ public class MuelleService {
         return null;
     }
 
+    /**
+     * Applies already validated dock changes to the managed entity.
+     *
+     * @param muelle validated update payload
+     * @param muelleEntity entity to mutate
+     */
     private void aplicarCambios(MuelleDTO muelle, MuelleEntity muelleEntity) {
         if (muelle.getCodigo() != null) {
             muelleEntity.setCodigo(muelle.getCodigo());

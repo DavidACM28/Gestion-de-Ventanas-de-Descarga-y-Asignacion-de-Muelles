@@ -29,6 +29,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+/**
+ * Handles operational closure business rules.
+ *
+ * <p>Closures block new reservations, may cancel affected reservations when
+ * forced by administrators, and support paginated queries.</p>
+ */
 @Service
 public class CierreOperativoService {
     @Autowired
@@ -40,6 +46,12 @@ public class CierreOperativoService {
     @Autowired
     private ReservaSlotRepository reservaSlotRepository;
 
+    /**
+     * Creates an operational closure after validating schedule conflicts.
+     *
+     * @param dto closure payload
+     * @return closure creation result
+     */
     @Transactional
     public CreateCierreOperativoResult createCierreOperativo(CierreOperativoDTO dto) {
 
@@ -143,6 +155,12 @@ public class CierreOperativoService {
         return CreateCierreOperativoResult.CREATED;
     }
 
+    /**
+     * Deletes a closure by identifier.
+     *
+     * @param id closure identifier
+     * @return {@code true} when the closure existed and was removed
+     */
     public boolean deleteCierreOperativo(Long id) {
 
         CierreOperativoEntity cierre = cierreOperativoRepository.findById(id).orElse(null);
@@ -153,6 +171,18 @@ public class CierreOperativoService {
         return true;
     }
 
+    /**
+     * Returns closures using optional filters and pagination.
+     *
+     * @param muelleId pier filter
+     * @param fechaDesde lower date bound
+     * @param fechaHasta upper date bound
+     * @param tipo closure type filter
+     * @param page zero-based page number
+     * @param size page size
+     * @param sort sort direction keyword
+     * @return paginated closure data
+     */
     public Page<CierreOperativoEntity> getCierresConFiltros(
         Long muelleId,LocalDate fechaDesde, LocalDate fechaHasta,
         String tipo, int page, int size, String sort) {

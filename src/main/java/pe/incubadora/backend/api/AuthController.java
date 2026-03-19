@@ -27,6 +27,12 @@ import pe.incubadora.backend.utils.RegisterUsuarioResult;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Exposes authentication and user registration endpoints.
+ *
+ * <p>This controller is responsible for authenticating credentials,
+ * issuing JWT tokens and creating users with role-specific rules.</p>
+ */
 @RestController
 @RequestMapping("/api/v1/auth")
 public class AuthController {
@@ -37,6 +43,12 @@ public class AuthController {
     @Autowired
     JwtGenerador jwtGenerador;
 
+    /**
+     * Authenticates a user and returns the corresponding login payload.
+     *
+     * @param loginDTO credentials submitted by the client
+     * @return a token response or an unauthorized error payload
+     */
     @PostMapping("/login")
     @Operation(summary = "Login de usuario", security = {})
     public ResponseEntity<Object> login(@RequestBody LoginDTO loginDTO) {
@@ -61,6 +73,13 @@ public class AuthController {
             )));
     }
 
+    /**
+     * Registers a new user in the system.
+     *
+     * @param registerDTO registration payload
+     * @param result validation result populated by Spring
+     * @return a creation response or a domain-specific validation error
+     */
     @PostMapping("/register")
     public ResponseEntity<Object> register(@RequestBody RegisterDTO registerDTO, BindingResult result) {
         if (result.hasErrors()) {

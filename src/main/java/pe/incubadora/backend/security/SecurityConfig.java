@@ -128,6 +128,10 @@ public class SecurityConfig {
                         "/api/v1/cierres/{id}"
                     ).hasAnyRole("ADMIN", "OPERADOR")
                     .requestMatchers(HttpMethod.PATCH,
+                        "/api/v1/camiones/{id}/desasignar",
+                        "/api/v1/camiones/{idCamion}/{idUsuario}/asignar"
+                    ).hasRole("ADMIN")
+                    .requestMatchers(HttpMethod.PATCH,
                         "/api/v1/reservas/{id}/confirmar",
                         "/api/v1/reservas/{id}/check-in",
                         "/api/v1/reservas/{id}/iniciar-descarga",

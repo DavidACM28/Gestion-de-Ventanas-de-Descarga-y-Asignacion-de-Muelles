@@ -27,6 +27,12 @@ import java.time.format.DateTimeParseException;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * REST controller for reservation lifecycle operations.
+ *
+ * <p>This controller concentrates the main reservation workflow:
+ * creation, lookup, update, filtering and state transitions.</p>
+ */
 @RestController
 @RequestMapping("/api/v1")
 public class ReservaDescargaController {
@@ -35,30 +41,61 @@ public class ReservaDescargaController {
     @Autowired
     private ColaEsperaService colaEsperaService;
 
+    /**
+     * Handles invalid request parameter types used in reservation filters.
+     *
+     * @return a standardized validation error response
+     */
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<Object> handleTypeMismatchException() {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
             new ErrorResponseDTO("VALIDATION_ERROR", "Asegúrese de que los filtros se envíen con el formato correcto"));
     }
 
+    /**
+     * Handles invalid request arguments in filter parsing.
+     *
+     * @return a standardized validation error response
+     */
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Object> handleIllegalArgumentException() {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
             new ErrorResponseDTO("VALIDATION_ERROR", "Asegúrese de que los filtros se envíen con el formato correcto"));
     }
 
+    /**
+     * Handles missing pagination parameters for filter endpoints.
+     *
+     * @return a standardized validation error response
+     */
     @ExceptionHandler(MissingServletRequestParameterException.class)
     public ResponseEntity<Object> handleMissingServletRequestParameterException() {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
             new ErrorResponseDTO("VALIDATION_ERROR", "Los parámetros: size, page, y sort, son obligatorios"));
     }
 
+    /**
+     * Handles invalid date filters in requests.
+     *
+     * @return a standardized validation error response
+     */
     @ExceptionHandler(DateTimeParseException.class)
     public ResponseEntity<Object> handleDateTimeParseException() {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
             new ErrorResponseDTO("VALIDATION_ERROR", "Fecha invalida. Use formato yyyy-MM-dd"));
     }
 
+    /**
+     * Creates a reservation request.
+     *
+     * <p>If the reservation collides with an occupied slot and the payload
+     * explicitly requests waiting queue fallback, the controller delegates
+     * queue creation to the waiting queue service.</p>
+     *
+     * @param reservaDTO reservation payload
+     * @param result validation result populated by Spring
+     * @return creation, fallback or validation response
+     */
     @PostMapping("/reservas")
     private ResponseEntity<Object> crearReserva(@Valid @RequestBody ReservaDTO reservaDTO, BindingResult result) {
         if (result.hasErrors()) {
@@ -117,6 +154,13 @@ public class ReservaDescargaController {
         }
     }
 
+    /**
+     * Updates a reservation and recalculates its occupied slots when needed.
+     *
+     * @param reservaDTO partial update payload
+     * @param id reservation identifier
+     * @return success or validation/domain error response
+     */
     @PutMapping("/reservas/{id}")
     private ResponseEntity<Object> updateReserva(@RequestBody ReservaDTO reservaDTO, @PathVariable Long id) {
         try {
@@ -154,6 +198,12 @@ public class ReservaDescargaController {
         }
     }
 
+    /**
+     * Retrieves a reservation by identifier.
+     *
+     * @param id reservation identifier
+     * @return the reservation or a not found response
+     */
     @GetMapping("/reservas/{id}")
     public ResponseEntity<Object> getReserva(@PathVariable Long id) {
         ReservaDescargaEntity reservaDescargaEntity = reservaDescargaService.getReserva(id);
@@ -164,6 +214,21 @@ public class ReservaDescargaController {
         return ResponseEntity.status(HttpStatus.OK).body(reservaDescargaEntity);
     }
 
+    /**
+     * Retrieves reservations using optional filters and pagination.
+     *
+     * @param muelleId dock filter
+     * @param camionId truck filter
+     * @param empresaId company filter
+     * @param fechaDesde lower date bound
+     * @param fechaHasta upper date bound
+     * @param estado status filter
+     * @param tipoCarga cargo type filter
+     * @param page zero-based page number
+     * @param size page size
+     * @param sort sort direction keyword
+     * @return paginated reservation data
+     */
     @GetMapping("/reservas")
     public ResponseEntity<Object> getReservas(
         @RequestParam(required = false) Long muelleId, @RequestParam(required = false) Long camionId,
@@ -183,6 +248,12 @@ public class ReservaDescargaController {
         return ResponseEntity.status(HttpStatus.OK).body(reservas);
     }
 
+    /**
+     * Moves a reservation from {@code SOLICITADA} to {@code CONFIRMADA}.
+     *
+     * @param id reservation identifier
+     * @return state transition result
+     */
     @PatchMapping("/reservas/{id}/confirmar")
     public ResponseEntity<Object> confirmarReserva(@PathVariable Long id) {
         CambiarEstadoReservaResult resultado = reservaDescargaService.confirmarReserva(id);
@@ -197,6 +268,12 @@ public class ReservaDescargaController {
         };
     }
 
+    /**
+     * Performs check-in for a confirmed reservation within the allowed time window.
+     *
+     * @param id reservation identifier
+     * @return state transition result
+     */
     @PatchMapping("/reservas/{id}/check-in")
     public ResponseEntity<Object> checkInReserva(@PathVariable Long id) {
         CambiarEstadoReservaResult resultado = reservaDescargaService.checkInReserva(id);
@@ -213,6 +290,12 @@ public class ReservaDescargaController {
         };
     }
 
+    /**
+     * Marks a checked-in reservation as currently unloading.
+     *
+     * @param id reservation identifier
+     * @return state transition result
+     */
     @PatchMapping("/reservas/{id}/iniciar-descarga")
     public ResponseEntity<Object> iniciarDescargaReserva(@PathVariable Long id) {
         CambiarEstadoReservaResult resultado = reservaDescargaService.iniciarReserva(id);
@@ -227,6 +310,12 @@ public class ReservaDescargaController {
         };
     }
 
+    /**
+     * Finalizes an unloading reservation.
+     *
+     * @param id reservation identifier
+     * @return state transition result
+     */
     @PatchMapping("/reservas/{id}/finalizar")
     public ResponseEntity<Object> finalizarReserva(@PathVariable Long id) {
         CambiarEstadoReservaResult resultado = reservaDescargaService.finalizarReserva(id);
@@ -241,6 +330,12 @@ public class ReservaDescargaController {
         };
     }
 
+    /**
+     * Cancels a reservation according to ownership and cancellation window rules.
+     *
+     * @param id reservation identifier
+     * @return state transition result
+     */
     @PatchMapping("/reservas/{id}/cancelar")
     public ResponseEntity<Object> cancelarReserva(@PathVariable Long id) {
         CambiarEstadoReservaResult resultado = reservaDescargaService.cancelarReserva(id);
@@ -257,6 +352,12 @@ public class ReservaDescargaController {
         };
     }
 
+    /**
+     * Marks a confirmed reservation as no-show.
+     *
+     * @param id reservation identifier
+     * @return state transition result
+     */
     @PatchMapping("/reservas/{id}/no-show")
     public ResponseEntity<Object> noShowReserva(@PathVariable Long id) {
         CambiarEstadoReservaResult resultado = reservaDescargaService.noShowReserva(id);

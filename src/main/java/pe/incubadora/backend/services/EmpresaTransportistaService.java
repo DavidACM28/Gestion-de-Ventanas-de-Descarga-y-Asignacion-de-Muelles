@@ -12,11 +12,20 @@ import pe.incubadora.backend.entities.EmpresaTransportistaEntity;
 import pe.incubadora.backend.repositories.EmpresaTransportistaRepository;
 import pe.incubadora.backend.utils.UpdateEmpresaResult;
 
+/**
+ * Handles transport company business logic.
+ */
 @Service
 public class EmpresaTransportistaService {
     @Autowired
     private EmpresaTransportistaRepository empresaTransportistaRepository;
 
+    /**
+     * Creates a transport company.
+     *
+     * @param empresa company payload
+     * @return {@code true} when the company is valid and was persisted
+     */
     @Transactional
     public boolean crearEmpresa(EmpresaTransportistaDTO empresa){
         if (empresa.getRuc().trim().length() != 11){
@@ -34,6 +43,13 @@ public class EmpresaTransportistaService {
         return true;
     }
 
+    /**
+     * Updates an existing transport company.
+     *
+     * @param empresa partial update payload
+     * @param id company identifier
+     * @return update result
+     */
     @Transactional
     public UpdateEmpresaResult updateEmpresa(EmpresaTransportistaDTO empresa, Long id) {
         EmpresaTransportistaEntity empresaTransportistaEntity = empresaTransportistaRepository.findById(id).orElse(null);
@@ -49,14 +65,33 @@ public class EmpresaTransportistaService {
         return UpdateEmpresaResult.UPDATED;
     }
 
+    /**
+     * Returns paginated transport company data.
+     *
+     * @param page pagination information
+     * @return paginated company data
+     */
     public Page<EmpresaTransportistaEntity> getEmpresas(Pageable page) {
         return empresaTransportistaRepository.findAll(page);
     }
 
+    /**
+     * Retrieves a transport company by identifier.
+     *
+     * @param id company identifier
+     * @return company entity or {@code null} when not found
+     */
     public EmpresaTransportistaEntity getEmpresa(Long id) {
         return empresaTransportistaRepository.findById(id).orElse(null);
     }
 
+    /**
+     * Validates mutable company fields before applying an update.
+     *
+     * @param empresa incoming update payload
+     * @param empresaTransportistaEntity current persisted entity
+     * @return validation result or {@code null} when valid
+     */
     private UpdateEmpresaResult validarUpdateEmpresa(
         EmpresaTransportistaDTO empresa, EmpresaTransportistaEntity empresaTransportistaEntity) {
 
@@ -85,6 +120,12 @@ public class EmpresaTransportistaService {
         return null;
     }
 
+    /**
+     * Applies already validated company changes to the managed entity.
+     *
+     * @param empresa validated update payload
+     * @param empresaTransportistaEntity entity to mutate
+     */
     private void aplicarCambios(EmpresaTransportistaDTO empresa, EmpresaTransportistaEntity empresaTransportistaEntity) {
         if (empresa.getRuc() != null && !empresa.getRuc().equals(empresaTransportistaEntity.getRuc())) {
             empresaTransportistaEntity.setRuc(empresa.getRuc());

@@ -16,12 +16,22 @@ import pe.incubadora.backend.utils.UpdateEmpresaResult;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * REST controller for transport company management.
+ */
 @RestController
 @RequestMapping("/api/v1")
 public class EmpresaTransportistaController {
     @Autowired
     private EmpresaTransportistaService empresaTransportistaService;
 
+    /**
+     * Creates a new transport company.
+     *
+     * @param empresaTransportistaDTO company payload
+     * @param result validation result populated by Spring
+     * @return the created payload or a validation/domain error
+     */
     @PostMapping("/empresas")
     private ResponseEntity<Object> crearEmpresa(@Valid @RequestBody EmpresaTransportistaDTO empresaTransportistaDTO, BindingResult result) {
         if (result.hasErrors()) {
@@ -44,6 +54,13 @@ public class EmpresaTransportistaController {
         }
     }
 
+    /**
+     * Updates an existing transport company.
+     *
+     * @param empresaTransportistaDTO partial update payload
+     * @param id company identifier
+     * @return the updated entity or a validation/domain error
+     */
     @PutMapping("/empresas/{id}")
     private ResponseEntity<Object> updateEmpresa(@RequestBody EmpresaTransportistaDTO empresaTransportistaDTO, @PathVariable Long id) {
         try {
@@ -69,12 +86,24 @@ public class EmpresaTransportistaController {
         }
     }
 
+    /**
+     * Returns a paginated list of transport companies.
+     *
+     * @param page zero-based page number
+     * @return paginated transport company data
+     */
     @GetMapping("/empresas")
     private ResponseEntity<Object> getEmpresas(@RequestParam int page) {
         Pageable pageable = Pageable.ofSize(10).withPage(page);
         return ResponseEntity.ok().body(empresaTransportistaService.getEmpresas(pageable));
     }
 
+    /**
+     * Retrieves a transport company by identifier.
+     *
+     * @param id company identifier
+     * @return the company or a not found response
+     */
     @GetMapping("/empresas/{id}")
     private ResponseEntity<Object> getEmpresasById(@PathVariable Long id) {
         EmpresaTransportistaEntity empresa = empresaTransportistaService.getEmpresa(id);

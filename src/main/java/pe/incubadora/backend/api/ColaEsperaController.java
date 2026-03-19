@@ -21,12 +21,22 @@ import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * REST controller for waiting queue operations.
+ */
 @RestController
 @RequestMapping("/api/v1")
 public class ColaEsperaController {
     @Autowired
     private ColaEsperaService colaEsperaService;
 
+    /**
+     * Creates a new waiting queue entry.
+     *
+     * @param dto queue creation payload
+     * @param result validation result populated by Spring
+     * @return a creation response or a validation/domain error
+     */
     @PostMapping("/cola-espera")
     public ResponseEntity<Object> crearColaEspera(@Valid @RequestBody ColaEsperaDTO dto, BindingResult result) {
         if (result.hasErrors()) {
@@ -56,6 +66,12 @@ public class ColaEsperaController {
         };
     }
 
+    /**
+     * Cancels an active waiting queue entry.
+     *
+     * @param id waiting queue identifier
+     * @return success or domain validation response
+     */
     @PatchMapping("/cola-espera/{id}/cancelar")
     public ResponseEntity<Object> cancelarColaEspera(@PathVariable Long id) {
         CancelarColaEsperaResult resultado = colaEsperaService.cancelarColaEspera(id);
@@ -68,6 +84,13 @@ public class ColaEsperaController {
         };
     }
 
+    /**
+     * Promotes the next compatible waiting queue entry into a reservation attempt.
+     *
+     * @param dto promotion payload
+     * @param result validation result populated by Spring
+     * @return promotion result translated to an HTTP response
+     */
     @PostMapping("/cola-espera/promover")
     public ResponseEntity<Object> promoverColaEspera(
         @Valid @RequestBody PromoverColaEsperaDTO dto, BindingResult result) {
@@ -119,6 +142,18 @@ public class ColaEsperaController {
         }
     }
 
+    /**
+     * Retrieves waiting queue entries using optional filters and pagination.
+     *
+     * @param fecha target date filter
+     * @param tipoCarga cargo type filter
+     * @param estado queue state filter
+     * @param prioridad priority filter
+     * @param page zero-based page number
+     * @param size page size
+     * @param sort sort direction keyword
+     * @return paginated waiting queue entries
+     */
     @GetMapping("/cola-espera")
     public ResponseEntity<Object> getColaEspera(
         @RequestParam(required = false) LocalDate fecha, @RequestParam(required = false) String tipoCarga,
